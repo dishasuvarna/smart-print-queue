@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html>
+<head><title>Order Placed</title></head>
+<body>
+    <h2>Order #{{ order.id }} placed!</h2>
+    <p>Pages: {{ order.page_count }} | Copies: {{ order.copies }}</p>
+    <p>Total: ₹{{ order.total_price }}</p>
+    <p>Status: {{ order.status }}</p>
+</body>
+</html>
