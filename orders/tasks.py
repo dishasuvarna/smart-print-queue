@@ -34,8 +34,8 @@ def process_pdf(self, order_id):
     # ... page counting / color detection using pypdf. The file has
     # already passed validators.validate_pdf_upload() at upload time,
     # so failures here should be rare and are worth logging loudly. ...
-    order.status = "PROCESSED"
-    order.save(update_fields=["status"])
+    order.processing_status = "PROCESSED"
+    order.save(update_fields=["processing_status"])
     pdf_logger.info("Finished processing order %s", order_id)
 
 

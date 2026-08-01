@@ -4,9 +4,13 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ("PENDING", "Pending"),
         ("PAID", "Paid"),
-        ("PROCESSED", "Processed"),
         ("EXPIRED", "Expired"),
         ("CANCELLED", "Cancelled"),
+    ]
+    PROCESSING_CHOICES = [
+        ("QUEUED", "Queued"),
+        ("PROCESSED", "Processed"),
+        ("FAILED", "Failed"),
     ]
 
     student_email = models.EmailField()
@@ -22,6 +26,9 @@ class Order(models.Model):
     pickup_pin = models.CharField(max_length=6, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
+    processing_status = models.CharField(max_length=20, choices=PROCESSING_CHOICES, default="QUEUED")
 
     def __str__(self):
         return f"Order #{self.id} — {self.status}"
