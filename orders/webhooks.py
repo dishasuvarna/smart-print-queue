@@ -52,9 +52,11 @@ def razorpay_webhook(request):
         logger.info("Duplicate webhook for order %s — already PAID, ignoring", order.id)
         return HttpResponse(status=200)
 
+    import random
     order.status = "PAID"
-    order.save(update_fields=["status"])
-    logger.info("Order %s marked PAID via webhook", order.id)
+    order.pickup_pin = str(random.randint(100000, 999999))
+    order.save(update_fields=["status", "pickup_pin"])
+    logger.info("Order %s marked PAID via webhook, PIN %s", order.id, order.pickup_pin)
 
     send_shopkeeper_notification.delay(order.id)
     return HttpResponse(status=200)
