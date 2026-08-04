@@ -63,23 +63,20 @@
     <script>
         document.getElementById("pay-btn").onclick = function () {
             var options = {
-                "key": "{{ razorpay_key_id }}",
-                "amount": "{{ amount }}",
-                "currency": "INR",
-                "name": "Smart Print Queue",
-                "description": "Order #{{ order.id }}",
-                "order_id": "{{ razorpay_order_id }}",
-                "handler": function (response) {
-                    // Payment succeeded on Razorpay's side. The webhook (server-to-server,
-                    // set up separately) is what actually marks the order PAID — this just
-                    // redirects the student to a friendly waiting page.
-                    window.location.href = "/order/{{ order.id }}/placed/";
-                },
-                "prefill": {
-                    "email": "{{ order.student_email }}"
-                },
-                "theme": { "color": "#4f46e5" }
-            };
+    "key": "{{ razorpay_key_id }}",
+    "amount": "{{ amount }}",
+    "currency": "INR",
+    "name": "Smart Print Queue",
+    "description": "Order #{{ order.id }}",
+    "order_id": "{{ razorpay_order_id }}",
+    "handler": function (response) {
+        window.location.href = "/order/{{ order.id }}/placed/";
+    },
+    "prefill": {
+        "email": "{{ order.student_email }}"
+    },
+    "theme": { "color": "#4f46e5" }
+};
             var rzp = new Razorpay(options);
             rzp.open();
         };
