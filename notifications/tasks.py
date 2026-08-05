@@ -15,6 +15,14 @@ logger = logging.getLogger("notifications.email")
 
 BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 
+EMAIL_FOOTER = (
+    '<hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0 12px;">'
+    '<p style="font-size:12px;color:#9ca3af;margin:0;">'
+    'Smart Print Queue &middot; Canara Engineering College, Sudhindra Nagar, '
+    'Bantwal Taluk, Mangaluru, DK District, Karnataka, India &middot; 574219'
+    '</p>'
+)
+
 
 @shared_task(
     bind=True,
@@ -35,6 +43,7 @@ def send_shopkeeper_notification(self, order_id):
             f"<p>New paid order #{order.id}.</p>"
             f"<p>Pages: {order.page_count} | Copies: {order.copies}</p>"
             f"<p>Pickup PIN: <b>{order.pickup_pin}</b></p>"
+            f"{EMAIL_FOOTER}"
         ),
     }
     response = requests.post(
@@ -67,7 +76,10 @@ def send_student_confirmation(self, order_id):
         "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Smart Print Queue"},
         "to": [{"email": order.student_email}],
         "subject": f"Order #{order.id} confirmed",
-        "htmlContent": f"<p>Your print job is confirmed. Pickup PIN: <b>{order.pickup_pin}</b></p>",
+        "htmlContent": (
+            f"<p>Your print job is confirmed. Pickup PIN: <b>{order.pickup_pin}</b></p>"
+            f"{EMAIL_FOOTER}"
+        ),
     }
     response = requests.post(
         BREVO_SEND_URL,
@@ -103,6 +115,7 @@ def send_new_handout_alert(self, handout_id):
             f"<p><b>{handout.title}</b><br>"
             f"{handout.course_name}{' · ' + handout.lecturer_name if handout.lecturer_name else ''}</p>"
             f"<p>Go to the admin panel to set a price and activate it.</p>"
+            f"{EMAIL_FOOTER}"
         ),
     }
     response = requests.post(
