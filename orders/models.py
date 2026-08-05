@@ -7,12 +7,18 @@ class Handout(models.Model):
     lecturer_name = models.CharField(max_length=150, blank=True)
     file = models.FileField(upload_to="handouts/")
     page_count = models.PositiveIntegerField(null=True, blank=True)
-    price_per_copy = models.DecimalField(max_digits=8, decimal_places=2)
-    is_active = models.BooleanField(default=True)
+    price_per_copy = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.is_active and self.price_per_copy is None:
+            raise ValidationError("Set a price before activating this handout.")
+
     def __str__(self):
-        return f"{self.title} ({self.course_name})"
+        status = "Active" if self.is_active else "Awaiting price"
+        return f"{self.title} ({self.course_name}) — {status}"
 
 
 class Order(models.Model):

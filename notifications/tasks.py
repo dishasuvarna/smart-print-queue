@@ -81,3 +81,39 @@ def send_student_confirmation(self, order_id):
         )
         response.raise_for_status()
     logger.info("Confirmation email sent for order %s", order_id)
+
+
+@shared_task(
+    bind=True,
+    autoretry_for=(requests.RequestException,),
+    retry_backoff=True,
+    retry_backoff_max=120,
+    max_retries=5,
+)
+def send_new_handout_alert(self, handout_id):
+    from orders.models import Handout
+
+    handout = Handout.objects.get(id=handout_id)
+    payload = {
+        "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Smart Print Queue"},
+        "to": [{"email": settings.SHOPKEEPER_EMAIL}],
+        "subject": f"New handout awaiting price: {handout.title}",
+        "htmlContent": (
+            f"<p>A new handout was submitted and needs a price before it goes live:</p>"
+            f"<p><b>{handout.title}</b><br>"
+            f"{handout.course_name}{' · ' + handout.lecturer_name if handout.lecturer_name else ''}</p>"
+            f"<p>Go to the admin panel to set a price and activate it.</p>"
+        ),
+    }
+    response = requests.post(
+        BREVO_SEND_URL,
+        json=payload,
+        headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
+        timeout=10,
+    )
+    if response.status_code >= 400:
+        logger.error(
+            "Brevo send failed for handout %s: %s %s", handout_id, response.status_code, response.text
+        )
+        response.raise_for_status()
+    logger.info("New handout alert sent for handout %s", handout_id)

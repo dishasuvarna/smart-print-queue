@@ -81,6 +81,10 @@
 </head>
 <body>
     <div class="card">
+        <div style="display:flex; gap:8px; margin-bottom:24px;">
+    <a href="{% url 'upload_order' %}" style="flex:1; text-align:center; padding:10px; border-radius:8px; background:#4f46e5; color:#fff; text-decoration:none; font-weight:600; font-size:14px;">Upload my file</a>
+    <a href="{% url 'browse_handouts' %}" style="flex:1; text-align:center; padding:10px; border-radius:8px; background:#f3f4f6; color:#374151; text-decoration:none; font-weight:600; font-size:14px;">Find a shop handout</a>
+</div>
         <h1>Upload your print job</h1>
         <p class="subtitle">PDF only, up to 50 pages. Payment happens after upload.</p>
 

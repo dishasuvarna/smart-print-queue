@@ -8,6 +8,9 @@ from .tasks import process_pdf
 import razorpay
 from django.conf import settings
 
+from django.db.models import Q
+from .models import Handout
+
 PRICE_PER_PAGE = 2  # ₹2 per page, adjust as needed
 
 
@@ -87,3 +90,54 @@ def upload_order(request):
 def order_placed(request, order_id):
     order = Order.objects.get(id=order_id)
     return render(request, "orders/success.html", {"order": order})
+
+def browse_handouts(request):
+    query = request.GET.get("q", "").strip()
+    handouts = Handout.objects.filter(is_active=True)
+
+    if query:
+        handouts = handouts.filter(
+            Q(title__icontains=query) |
+            Q(course_name__icontains=query) |
+            Q(lecturer_name__icontains=query)
+        )
+
+    return render(request, "orders/browse_handouts.html", {
+        "handouts": handouts,
+        "query": query,
+    })
+
+def order_handout(request, handout_id):
+    handout = Handout.objects.get(id=handout_id, is_active=True)
+
+    if request.method == "POST":
+        student_email = request.POST.get("student_email")
+        copies = int(request.POST.get("copies", 1))
+        total_price = handout.price_per_copy * copies
+
+        order = Order.objects.create(
+            student_email=student_email,
+            handout=handout,
+            page_count=handout.page_count,
+            copies=copies,
+            total_price=total_price,
+            status="PENDING",
+        )
+
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        razorpay_order = client.order.create({
+            "amount": int(total_price * 100),
+            "currency": "INR",
+            "receipt": f"order_{order.id}",
+        })
+        order.razorpay_order_id = razorpay_order["id"]
+        order.save(update_fields=["razorpay_order_id"])
+
+        return render(request, "orders/payment.html", {
+            "order": order,
+            "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+            "razorpay_order_id": razorpay_order["id"],
+            "amount": int(total_price * 100),
+        })
+
+    return render(request, "orders/order_handout.html", {"handout": handout})

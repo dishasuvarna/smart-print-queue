@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Handout</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+            background: #f4f5f7;
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .card {
+            max-width: 460px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        .meta { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #374151; }
+        .field { margin-bottom: 18px; }
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>{{ handout.title }}</h1>
+        <p class="meta">{{ handout.course_name }}{% if handout.lecturer_name %} · {{ handout.lecturer_name }}{% endif %} · ₹{{ handout.price_per_copy }}/copy</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="field">
+                <label>Email address</label>
+                <input type="email" name="student_email" required>
+            </div>
+            <div class="field">
+                <label>Number of copies</label>
+                <input type="number" name="copies" value="1" min="1" required>
+            </div>
+            <button type="submit">Continue to payment</button>
+        </form>
+    </div>
+</body>
+</html>
