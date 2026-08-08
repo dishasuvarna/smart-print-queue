@@ -164,3 +164,5 @@ LOGGING = {
         "celery": {"handlers": ["console"], "level": LOG_LEVEL, "propagate": False},
     },
 }
+
+LOGIN_URL = "/admin/login/"
