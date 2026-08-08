@@ -5,6 +5,8 @@
 # zero application code changes once you move to paid hosting.
 set -e
 
+python manage.py collectstatic --noinput
+
 celery -A config worker --loglevel=info --concurrency=2 &
 celery -A config beat --loglevel=info &
 
