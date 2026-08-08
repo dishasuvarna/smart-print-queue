@@ -52,5 +52,8 @@ class Order(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    printed_at = models.DateTimeField(null=True, blank=True)
+    print_token = models.CharField(max_length=32, blank=True)
+
     def __str__(self):
         return f"Order #{self.id} — {self.status}"

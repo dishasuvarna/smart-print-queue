@@ -11,7 +11,7 @@ from django.http import HttpResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from notifications.tasks import send_shopkeeper_notification
+# from notifications.tasks import send_shopkeeper_notification
 from .models import Order
 
 logger = logging.getLogger("orders.payments")
@@ -53,10 +53,12 @@ def razorpay_webhook(request):
         return HttpResponse(status=200)
 
     import random
+    import uuid
     order.status = "PAID"
     order.pickup_pin = str(random.randint(100000, 999999))
+    order.print_token = uuid.uuid4().hex
     order.save(update_fields=["status", "pickup_pin"])
-    logger.info("Order %s marked PAID via webhook, PIN %s", order.id, order.pickup_pin)
+    #logger.info("Order %s marked PAID via webhook, PIN %s", order.id, order.pickup_pin)
 
-    send_shopkeeper_notification.delay(order.id)
+    # send_shopkeeper_notification.delay(order.id)
     return HttpResponse(status=200)

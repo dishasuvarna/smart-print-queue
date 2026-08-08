@@ -24,41 +24,7 @@ EMAIL_FOOTER = (
 )
 
 
-@shared_task(
-    bind=True,
-    autoretry_for=(requests.RequestException,),
-    retry_backoff=True,
-    retry_backoff_max=120,
-    max_retries=5,
-)
-def send_shopkeeper_notification(self, order_id):
-    from orders.models import Order
-
-    order = Order.objects.get(id=order_id)
-    payload = {
-        "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Smart Print Queue"},
-        "to": [{"email": settings.SHOPKEEPER_EMAIL}],
-        "subject": f"New order #{order.id} — pickup PIN {order.pickup_pin}",
-        "htmlContent": (
-            f"<p>New paid order #{order.id}.</p>"
-            f"<p>Pages: {order.page_count} | Copies: {order.copies}</p>"
-            f"<p>Pickup PIN: <b>{order.pickup_pin}</b></p>"
-            f"{EMAIL_FOOTER}"
-        ),
-    }
-    response = requests.post(
-        BREVO_SEND_URL,
-        json=payload,
-        headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
-        timeout=10,
-    )
-    if response.status_code >= 400:
-        logger.error(
-            "Brevo send failed for order %s: %s %s", order_id, response.status_code, response.text
-        )
-        response.raise_for_status()  # triggers autoretry above
-    logger.info("Notification email sent for order %s", order_id)
-
+import base64
 
 @shared_task(
     bind=True,
@@ -67,32 +33,89 @@ def send_shopkeeper_notification(self, order_id):
     retry_backoff_max=120,
     max_retries=5,
 )
-def send_student_confirmation(self, order_id):
-    """Same pattern as above — confirmation email to the student who placed the order."""
-    from orders.models import Order
+# def send_shopkeeper_notification(self, order_id):
+#     from orders.models import Order
 
-    order = Order.objects.get(id=order_id)
-    payload = {
-        "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Smart Print Queue"},
-        "to": [{"email": order.student_email}],
-        "subject": f"Order #{order.id} confirmed",
-        "htmlContent": (
-            f"<p>Your print job is confirmed. Pickup PIN: <b>{order.pickup_pin}</b></p>"
-            f"{EMAIL_FOOTER}"
-        ),
-    }
-    response = requests.post(
-        BREVO_SEND_URL,
-        json=payload,
-        headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
-        timeout=10,
-    )
-    if response.status_code >= 400:
-        logger.error(
-            "Brevo send failed for order %s: %s %s", order_id, response.status_code, response.text
-        )
-        response.raise_for_status()
-    logger.info("Confirmation email sent for order %s", order_id)
+#     order = Order.objects.get(id=order_id)
+
+#     if order.handout:
+#         file_field = order.handout.file
+#         item_description = f"Handout: {order.handout.title}"
+#     else:
+#         file_field = order.file
+#         item_description = "Student-uploaded file"
+
+#     payload = {
+#         "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Smart Print Queue"},
+#         "to": [{"email": settings.SHOPKEEPER_EMAIL}],
+#         "subject": f"New order #{order.id} — pickup PIN {order.pickup_pin}",
+#         "htmlContent": (
+#             f"<p>New paid order #{order.id}.</p>"
+#             f"<p>{item_description}</p>"
+#             f"<p>Pages: {order.page_count} | Copies: {order.copies}</p>"
+#             f"<p>Pickup PIN: <b>{order.pickup_pin}</b></p>"
+#             f"<p>The file is attached to this email.</p>"
+#             f"{EMAIL_FOOTER}"
+#         ),
+#     }
+
+#     # Attach the actual PDF so the shopkeeper always has it, regardless
+#     # of whether the file still exists on disk later.
+#     if file_field:
+#         with file_field.open("rb") as f:
+#             file_content = base64.b64encode(f.read()).decode("utf-8")
+#         payload["attachment"] = [{
+#             "content": file_content,
+#             "name": file_field.name.split("/")[-1],
+#         }]
+
+#     response = requests.post(
+#         BREVO_SEND_URL,
+#         json=payload,
+#         headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
+#         timeout=10,
+#     )
+#     if response.status_code >= 400:
+#         logger.error(
+#             "Brevo send failed for order %s: %s %s", order_id, response.status_code, response.text
+#         )
+#         response.raise_for_status()
+#     logger.info("Notification email sent for order %s", order_id)
+
+
+@shared_task(
+    bind=True,
+    autoretry_for=(requests.RequestException,),
+    retry_backoff=True,
+    retry_backoff_max=120,
+    max_retries=5,
+)
+# def send_student_confirmation(self, order_id):
+#     """Same pattern as above — confirmation email to the student who placed the order."""
+#     from orders.models import Order
+
+#     order = Order.objects.get(id=order_id)
+#     payload = {
+#         "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Smart Print Queue"},
+#         "to": [{"email": order.student_email}],
+#         "subject": f"Order #{order.id} confirmed",
+#         "htmlContent": (
+#             f"<p>Your print job is confirmed. Pickup PIN: <b>{order.pickup_pin}</b></p>"
+#             f"{EMAIL_FOOTER}"
+#         ),
+#     }
+#     response = requests.post(
+#         BREVO_SEND_URL,
+#         json=payload,
+#         headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
+#         timeout=10,
+#     )
+#     if response.status_code >= 400:
+#         logger.error(
+#             "Brevo send failed for order %s: %s %s", order_id, response.status_code, response.text
+#         )
+#         response.raise_for_status()
+#     logger.info("Confirmation email sent for order %s", order_id)
 
 
 @shared_task(
@@ -130,3 +153,22 @@ def send_new_handout_alert(self, handout_id):
         )
         response.raise_for_status()
     logger.info("New handout alert sent for handout %s", handout_id)
+
+@shared_task(bind=True, autoretry_for=(requests.RequestException,), retry_backoff=True, retry_backoff_max=120, max_retries=5)
+def send_student_ready_notification(self, order_id):
+    from orders.models import Order
+    order = Order.objects.get(id=order_id)
+    payload = {
+        "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Smart Print Queue"},
+        "to": [{"email": order.student_email}],
+        "subject": f"Your printout is ready — Order #{order.id}",
+        "htmlContent": (
+            f"<p>Your order is printed and ready for pickup.</p>"
+            f"<p>Pickup PIN: <b>{order.pickup_pin}</b></p>"
+            f"{EMAIL_FOOTER}"
+        ),
+    }
+    response = requests.post(BREVO_SEND_URL, json=payload, headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"}, timeout=10)
+    if response.status_code >= 400:
+        response.raise_for_status()
+    logger.info("Ready notification sent for order %s", order_id)

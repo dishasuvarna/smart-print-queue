@@ -1,6 +1,8 @@
 from django.contrib import admin
 from .models import Order, Handout
 
+from django.utils import timezone
+
 admin.site.register(Order)
 
 SHOPKEEPER_ONLY_FIELDS = ["price_per_copy", "is_active"]
@@ -22,3 +24,15 @@ class HandoutAdmin(admin.ModelAdmin):
         if not request.user.is_superuser:
             return SHOPKEEPER_ONLY_FIELDS
         return []
+
+
+@admin.action(description="Mark selected orders as printed")
+def mark_as_printed(modeladmin, request, queryset):
+    queryset.update(printed_at=timezone.now())
+
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ("id", "status", "printed_at", "created_at")
+    actions = [mark_as_printed]
+
+admin.site.unregister(Order)
+admin.site.register(Order, OrderAdmin)
