@@ -1,23 +1,53 @@
 from django.db import models
 
 
+# class Handout(models.Model):
+#     title = models.CharField(max_length=200)
+#     course_name = models.CharField(max_length=150, blank=True)
+#     lecturer_name = models.CharField(max_length=150, blank=True)
+#     file = models.FileField(upload_to="handouts/")
+#     page_count = models.PositiveIntegerField(null=True, blank=True)
+#     price_per_copy = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+#     is_active = models.BooleanField(default=False)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+#     def clean(self):
+#         from django.core.exceptions import ValidationError
+#         if self.is_active and self.price_per_copy is None:
+#             raise ValidationError("Set a price before activating this handout.")
+
+#     def __str__(self):
+#         status = "Active" if self.is_active else "Awaiting price"
+#         return f"{self.title} ({self.course_name}) — {status}"
+
+
 class Handout(models.Model):
+    PRICE_PER_PAGE = 2  # shop's per-page rate for handouts
+
     title = models.CharField(max_length=200)
     course_name = models.CharField(max_length=150, blank=True)
     lecturer_name = models.CharField(max_length=150, blank=True)
+    semester = models.CharField(max_length=50)
+    contact_number = models.CharField(max_length=15)
     file = models.FileField(upload_to="handouts/")
-    page_count = models.PositiveIntegerField(null=True, blank=True)
+    page_count = models.PositiveIntegerField()  # required, no longer optional
     price_per_copy = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        # Price is always derived from page count — never manually entered by anyone.
+        if self.page_count:
+            self.price_per_copy = self.page_count * self.PRICE_PER_PAGE
+        super().save(*args, **kwargs)
+
     def clean(self):
         from django.core.exceptions import ValidationError
         if self.is_active and self.price_per_copy is None:
-            raise ValidationError("Set a price before activating this handout.")
+            raise ValidationError("Price could not be calculated — page count is missing.")
 
     def __str__(self):
-        status = "Active" if self.is_active else "Awaiting price"
+        status = "Active" if self.is_active else "Awaiting verification"
         return f"{self.title} ({self.course_name}) — {status}"
 
 
