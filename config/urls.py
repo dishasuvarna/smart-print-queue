@@ -16,3 +16,8 @@ urlpatterns = [
     path("vendor/", vendor_dashboard, name="vendor_dashboard"),
     path("vendor/order/<int:order_id>/mark-printed/", mark_printed, name="mark_printed"),
 ]
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
