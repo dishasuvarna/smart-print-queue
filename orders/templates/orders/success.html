@@ -66,10 +66,10 @@
         <div class="row"><span class="label">Copies</span><span class="value">{{ order.copies }}</span></div>
         <div class="row"><span class="label">Total</span><span class="value">₹{{ order.total_price }}</span></div>
         {% if order.printed_at %}
-            <div class="row"><span class="label">Print status</span><span class="value">Printed at {{ order.printed_at }}</span></div>
-        {% else %}
-            <div class="row"><span class="label">Print status</span><span class="status">Pending</span></div>
-        {% endif %}
+    <div class="row"><span class="label">Print status</span><span class="value">Printed — ready for pickup at {{ order.printed_at }}</span></div>
+{% else %}
+    <div class="row"><span class="label">Print status</span><span class="status">Payment confirmed — printing in progress</span></div>
+{% endif %}
     </div>
 </body>
 </html>
