@@ -41,12 +41,15 @@ def send_new_handout_alert(self, handout_id):
         "to": [{"email": settings.SHOPKEEPER_EMAIL}],
         "subject": f"New handout awaiting price: {handout.title}",
         "htmlContent": (
-            f"<p>A new handout was submitted and needs a price before it goes live:</p>"
-            f"<p><b>{handout.title}</b><br>"
-            f"{handout.course_name}{' · ' + handout.lecturer_name if handout.lecturer_name else ''}</p>"
-            f"<p>Go to the admin panel to set a price and activate it.</p>"
-            f"{EMAIL_FOOTER}"
-        ),
+    f"<p>A new handout was submitted and is awaiting verification:</p>"
+    f"<p><b>{handout.title}</b><br>"
+    f"{handout.course_name}{' · ' + handout.lecturer_name if handout.lecturer_name else ''}<br>"
+    f"Semester {handout.semester} · Pages: {handout.page_count} · Price: ₹{handout.price_per_copy}/copy</p>"
+    f"<p>Contact: {handout.contact_number}</p>"
+    f"<p>Please review the file and mark it Active if correct. "
+    f"Contact the professor above if anything needs clarification.</p>"
+    f"{EMAIL_FOOTER}"
+),
     }
     response = requests.post(
         BREVO_SEND_URL,
