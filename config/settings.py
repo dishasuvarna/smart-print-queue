@@ -136,6 +136,21 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+if not DEBUG:
+    STORAGES["default"] = {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "access_key": env("SUPABASE_S3_ACCESS_KEY_ID"),
+            "secret_key": env("SUPABASE_S3_SECRET_ACCESS_KEY"),
+            "bucket_name": env("SUPABASE_S3_BUCKET"),
+            "endpoint_url": env("SUPABASE_S3_ENDPOINT"),
+            "region_name": env("SUPABASE_S3_REGION"),
+            "default_acl": "public-read",
+            "querystring_auth": False,
+            "file_overwrite": False,
+        },
+    }
+
 # ---------------------------------------------------------------------------
 # Logging — same handlers in both environments; only LOG_LEVEL differs via
 # env var. Named loggers per subsystem make debugging targeted without
