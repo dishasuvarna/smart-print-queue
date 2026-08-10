@@ -148,6 +148,7 @@ if not DEBUG:
             "default_acl": "public-read",
             "querystring_auth": False,
             "file_overwrite": False,
+            "custom_domain": f"{env('SUPABASE_PROJECT_REF')}.supabase.co/storage/v1/object/public/{env('SUPABASE_S3_BUCKET')}",
         },
     }
 

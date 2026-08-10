@@ -114,15 +114,19 @@ def order_handout(request, handout_id):
     return render(request, "orders/order_handout.html", {"handout": handout})
 
 
+def is_authorized_vendor(user):
+    return user.is_superuser or user.username == "dishag"
+
+
 @login_required
-@user_passes_test(lambda u: u.is_staff)
+@user_passes_test(is_authorized_vendor)
 def vendor_dashboard(request):
     pending_orders = Order.objects.filter(status="PAID", printed_at__isnull=True).order_by("created_at")
     return render(request, "orders/vendor.html", {"orders": pending_orders})
 
 
 @login_required
-@user_passes_test(lambda u: u.is_staff)
+@user_passes_test(is_authorized_vendor)
 def mark_printed(request, order_id):
     order = Order.objects.get(id=order_id)
     if not order.printed_at:
