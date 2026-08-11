@@ -132,7 +132,15 @@ def mark_printed(request, order_id):
     order = Order.objects.get(id=order_id)
     if not order.printed_at:
         order.printed_at = timezone.now()
-        order.save(update_fields=["printed_at"])
+
+        # Delete the actual file from storage now that it's been printed —
+        # keeps storage usage from growing forever. Only applies to student
+        # uploads; handout files are shared across many orders and must
+        # never be deleted here.
+        if order.file and not order.handout:
+            order.file.delete(save=False)
+
+        order.save(update_fields=["printed_at", "file"])
         from notifications.tasks import send_student_ready_notification
         send_student_ready_notification.delay(order.id)
     return redirect("vendor_dashboard")
