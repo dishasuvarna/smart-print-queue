@@ -182,3 +182,25 @@ def pending_handout_count(request):
     from .models import Handout
     count = Handout.objects.filter(is_active=False).count()
     return HttpResponse(str(count))
+
+from django.http import FileResponse
+
+@login_required
+@user_passes_test(is_authorized_vendor)
+def print_order(request, order_id):
+    from .pdf_utils import stamp_order_banner
+    order = Order.objects.get(id=order_id)
+    source = order.handout.file if order.handout else order.file
+    stamped = stamp_order_banner(source, order.id, order.pickup_pin)
+    return FileResponse(stamped, content_type="application/pdf")
+
+@login_required
+@user_passes_test(is_authorized_vendor)
+def print_batch(request, handout_id):
+    from .pdf_utils import stamp_order_banner
+    from .models import Handout
+    handout = Handout.objects.get(id=handout_id)
+    orders = Order.objects.filter(handout_id=handout_id, status="PAID", printed_at__isnull=True)
+    pins = ", ".join(o.pickup_pin for o in orders)
+    stamped = stamp_order_banner(handout.file, f"Batch: {handout.title}", pins)
+    return FileResponse(stamped, content_type="application/pdf")
