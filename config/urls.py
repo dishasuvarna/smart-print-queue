@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from orders.views import pending_handout_count
+from orders.views import mark_batch_printed
 
 from orders.views import (
     upload_order, order_placed, browse_handouts, order_handout,
@@ -19,6 +20,7 @@ urlpatterns = [
     path("vendor/", vendor_dashboard, name="vendor_dashboard"),
     path("vendor/order/<int:order_id>/mark-printed/", mark_printed, name="mark_printed"),
     path("vendor/pending-count/", pending_handout_count, name="pending_handout_count"),
+    path("vendor/handout/<int:handout_id>/mark-batch-printed/", mark_batch_printed, name="mark_batch_printed"),
 ]
 
 from django.conf import settings

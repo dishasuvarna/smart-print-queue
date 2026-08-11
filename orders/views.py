@@ -122,8 +122,27 @@ def is_authorized_vendor(user):
 @login_required
 @user_passes_test(is_authorized_vendor)
 def vendor_dashboard(request):
-    pending_orders = Order.objects.filter(status="PAID", printed_at__isnull=True).order_by("created_at")
-    return render(request, "orders/vendor.html", {"orders": pending_orders})
+    pending = Order.objects.filter(status="PAID", printed_at__isnull=True).order_by("created_at")
+
+    upload_orders = pending.filter(handout__isnull=True)
+
+    handout_orders = pending.filter(handout__isnull=False)
+    handout_batches = {}
+    for order in handout_orders:
+        h = order.handout
+        if h.id not in handout_batches:
+            handout_batches[h.id] = {
+                "handout": h,
+                "orders": [],
+                "total_copies": 0,
+            }
+        handout_batches[h.id]["orders"].append(order)
+        handout_batches[h.id]["total_copies"] += order.copies
+
+    return render(request, "orders/vendor.html", {
+        "upload_orders": upload_orders,
+        "handout_batches": handout_batches.values(),
+    })
 
 
 @login_required
@@ -144,6 +163,18 @@ def mark_printed(request, order_id):
         from notifications.tasks import send_student_ready_notification
         send_student_ready_notification.delay(order.id)
     return redirect("vendor_dashboard")
+
+@login_required
+@user_passes_test(is_authorized_vendor)
+def mark_batch_printed(request, handout_id):
+    orders = Order.objects.filter(handout_id=handout_id, status="PAID", printed_at__isnull=True)
+    for order in orders:
+        order.printed_at = timezone.now()
+        order.save(update_fields=["printed_at"])
+        from notifications.tasks import send_student_ready_notification
+        send_student_ready_notification.delay(order.id)
+    return redirect("vendor_dashboard")
+
 
 def pending_handout_count(request):
     if not is_authorized_vendor(request.user):

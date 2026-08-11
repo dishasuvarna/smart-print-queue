@@ -2,18 +2,46 @@
 <html><head><title>Vendor Dashboard</title>
 <style>
 body{font-family:sans-serif;background:#f4f5f7;padding:30px;}
-table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;}
+h2{margin-top:32px;}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;margin-bottom:20px;}
 th,td{padding:12px;text-align:left;border-bottom:1px solid #eee;}
 th{background:#f9fafb;}
 button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;}
 a.download{color:#4f46e5;}
 </style></head>
 <body>
-<h1>Pending Orders ({{ orders|length }})</h1>
-
-<div id="handout-badge" style="display:none; background:#dc2626; color:#fff; padding:6px 14px; border-radius:20px; display:inline-block; font-weight:600; font-size:14px; margin-bottom:16px;">
+<div id="handout-badge" style="display:none; background:#dc2626; color:#fff; padding:6px 14px; border-radius:20px; display:inline-block; font-weight:600; font-size:14px;">
     Handouts Pending: <span id="handout-count">0</span>
 </div>
+
+<h2>Student Uploads ({{ upload_orders|length }})</h2>
+<table>
+<tr><th>Order #</th><th>Pages</th><th>Copies</th><th>PIN</th><th>File</th><th>Action</th></tr>
+{% for order in upload_orders %}
+<tr>
+    <td>{{ order.id }}</td>
+    <td>{{ order.page_count }}</td>
+    <td>{{ order.copies }}</td>
+    <td>{{ order.pickup_pin }}</td>
+    <td>{% if order.file %}<a class="download" href="{{ order.file.url }}">Download</a>{% endif %}</td>
+    <td><form method="post" action="{% url 'mark_printed' order.id %}">{% csrf_token %}<button type="submit">Mark Printed</button></form></td>
+</tr>
+{% endfor %}
+</table>
+
+<h2>Handout Batches ({{ handout_batches|length }})</h2>
+<table>
+<tr><th>Handout</th><th>Orders</th><th>Total Copies</th><th>File</th><th>Action</th></tr>
+{% for batch in handout_batches %}
+<tr>
+    <td>{{ batch.handout.title }}</td>
+    <td>{{ batch.orders|length }}</td>
+    <td>{{ batch.total_copies }}</td>
+    <td><a class="download" href="{{ batch.handout.file.url }}">Download</a></td>
+    <td><form method="post" action="{% url 'mark_batch_printed' batch.handout.id %}">{% csrf_token %}<button type="submit">Mark Batch Ready</button></form></td>
+</tr>
+{% endfor %}
+</table>
 
 <script>
 function updateHandoutBadge() {
@@ -27,21 +55,6 @@ function updateHandoutBadge() {
         });
 }
 updateHandoutBadge();
-setInterval(updateHandoutBadge, 15000); // refresh every 15 seconds
+setInterval(updateHandoutBadge, 15000);
 </script>
-
-<table>
-<tr><th>Order #</th><th>Item</th><th>Pages</th><th>Copies</th><th>PIN</th><th>File</th><th>Action</th></tr>
-{% for order in orders %}
-<tr>
-    <td>{{ order.id }}</td>
-    <td>{% if order.handout %}{{ order.handout.title }}{% else %}Student upload{% endif %}</td>
-    <td>{{ order.page_count }}</td>
-    <td>{{ order.copies }}</td>
-    <td>{{ order.pickup_pin }}</td>
-    <td>{% if order.file %}<a class="download" href="{{ order.file.url }}">Download</a>{% elif order.handout %}<a class="download" href="{{ order.handout.file.url }}">Download</a>{% endif %}</td>
-    <td><form method="post" action="{% url 'mark_printed' order.id %}">{% csrf_token %}<button type="submit">Mark Printed</button></form></td>
-</tr>
-{% endfor %}
-</table>
 </body></html>
