@@ -10,6 +10,26 @@ a.download{color:#4f46e5;}
 </style></head>
 <body>
 <h1>Pending Orders ({{ orders|length }})</h1>
+
+<div id="handout-badge" style="display:none; background:#dc2626; color:#fff; padding:6px 14px; border-radius:20px; display:inline-block; font-weight:600; font-size:14px; margin-bottom:16px;">
+    Handouts Pending: <span id="handout-count">0</span>
+</div>
+
+<script>
+function updateHandoutBadge() {
+    fetch("{% url 'pending_handout_count' %}")
+        .then(r => r.text())
+        .then(count => {
+            const badge = document.getElementById("handout-badge");
+            const countSpan = document.getElementById("handout-count");
+            countSpan.textContent = count;
+            badge.style.display = (parseInt(count) > 0) ? "inline-block" : "none";
+        });
+}
+updateHandoutBadge();
+setInterval(updateHandoutBadge, 15000); // refresh every 15 seconds
+</script>
+
 <table>
 <tr><th>Order #</th><th>Item</th><th>Pages</th><th>Copies</th><th>PIN</th><th>File</th><th>Action</th></tr>
 {% for order in orders %}

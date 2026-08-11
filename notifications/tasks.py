@@ -25,44 +25,44 @@ EMAIL_FOOTER = (
 )
 
 
-@shared_task(
-    bind=True,
-    autoretry_for=(requests.RequestException,),
-    retry_backoff=True,
-    retry_backoff_max=120,
-    max_retries=5,
-)
-def send_new_handout_alert(self, handout_id):
-    from orders.models import Handout
+# @shared_task(
+#     bind=True,
+#     autoretry_for=(requests.RequestException,),
+#     retry_backoff=True,
+#     retry_backoff_max=120,
+#     max_retries=5,
+# )
+# def send_new_handout_alert(self, handout_id):
+#     from orders.models import Handout
 
-    handout = Handout.objects.get(id=handout_id)
-    payload = {
-        "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Smart Print Queue"},
-        "to": [{"email": settings.SHOPKEEPER_EMAIL}],
-        "subject": f"New handout awaiting price: {handout.title}",
-        "htmlContent": (
-    f"<p>A new handout was submitted and is awaiting verification:</p>"
-    f"<p><b>{handout.title}</b><br>"
-    f"{handout.course_name}{' · ' + handout.lecturer_name if handout.lecturer_name else ''}<br>"
-    f"Semester {handout.semester} · Pages: {handout.page_count} · Price: ₹{handout.price_per_copy}/copy</p>"
-    f"<p>Contact: {handout.contact_number}</p>"
-    f"<p>Please review the file and mark it Active if correct. "
-    f"Contact the professor above if anything needs clarification.</p>"
-    f"{EMAIL_FOOTER}"
-),
-    }
-    response = requests.post(
-        BREVO_SEND_URL,
-        json=payload,
-        headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
-        timeout=10,
-    )
-    if response.status_code >= 400:
-        logger.error(
-            "Brevo send failed for handout %s: %s %s", handout_id, response.status_code, response.text
-        )
-        response.raise_for_status()
-    logger.info("New handout alert sent for handout %s", handout_id)
+#     handout = Handout.objects.get(id=handout_id)
+#     payload = {
+#         "sender": {"email": settings.DEFAULT_FROM_EMAIL, "name": "Smart Print Queue"},
+#         "to": [{"email": settings.SHOPKEEPER_EMAIL}],
+#         "subject": f"New handout awaiting price: {handout.title}",
+#         "htmlContent": (
+#     f"<p>A new handout was submitted and is awaiting verification:</p>"
+#     f"<p><b>{handout.title}</b><br>"
+#     f"{handout.course_name}{' · ' + handout.lecturer_name if handout.lecturer_name else ''}<br>"
+#     f"Semester {handout.semester} · Pages: {handout.page_count} · Price: ₹{handout.price_per_copy}/copy</p>"
+#     f"<p>Contact: {handout.contact_number}</p>"
+#     f"<p>Please review the file and mark it Active if correct. "
+#     f"Contact the professor above if anything needs clarification.</p>"
+#     f"{EMAIL_FOOTER}"
+# ),
+#     }
+#     response = requests.post(
+#         BREVO_SEND_URL,
+#         json=payload,
+#         headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
+#         timeout=10,
+#     )
+#     if response.status_code >= 400:
+#         logger.error(
+#             "Brevo send failed for handout %s: %s %s", handout_id, response.status_code, response.text
+#         )
+#         response.raise_for_status()
+#     logger.info("New handout alert sent for handout %s", handout_id)
 
 
 @shared_task(

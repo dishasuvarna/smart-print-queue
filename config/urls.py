@@ -1,5 +1,8 @@
 from django.contrib import admin
 from django.urls import path
+
+from orders.views import pending_handout_count
+
 from orders.views import (
     upload_order, order_placed, browse_handouts, order_handout,
     vendor_dashboard, mark_printed,
@@ -15,6 +18,7 @@ urlpatterns = [
     path("handouts/<int:handout_id>/order/", order_handout, name="order_handout"),
     path("vendor/", vendor_dashboard, name="vendor_dashboard"),
     path("vendor/order/<int:order_id>/mark-printed/", mark_printed, name="mark_printed"),
+    path("vendor/pending-count/", pending_handout_count, name="pending_handout_count"),
 ]
 
 from django.conf import settings

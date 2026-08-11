@@ -1,3 +1,4 @@
+from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
@@ -135,3 +136,10 @@ def mark_printed(request, order_id):
         from notifications.tasks import send_student_ready_notification
         send_student_ready_notification.delay(order.id)
     return redirect("vendor_dashboard")
+
+def pending_handout_count(request):
+    if not is_authorized_vendor(request.user):
+        return HttpResponse(status=403)
+    from .models import Handout
+    count = Handout.objects.filter(is_active=False).count()
+    return HttpResponse(str(count))
