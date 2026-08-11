@@ -1,3 +1,5 @@
+import io
+
 from django.http.response import HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -199,8 +201,20 @@ def print_order(request, order_id):
 def print_batch(request, handout_id):
     from .pdf_utils import stamp_order_banner
     from .models import Handout
+    from pypdf import PdfWriter
+
     handout = Handout.objects.get(id=handout_id)
     orders = Order.objects.filter(handout_id=handout_id, status="PAID", printed_at__isnull=True)
-    pins = ", ".join(o.pickup_pin for o in orders)
-    stamped = stamp_order_banner(handout.file, f"Batch: {handout.title}", pins)
-    return FileResponse(stamped, content_type="application/pdf")
+
+    combined = PdfWriter()
+    for order in orders:
+        stamped = stamp_order_banner(handout.file, order.id, order.pickup_pin, title=handout.title)
+        from pypdf import PdfReader
+        stamped_reader = PdfReader(stamped)
+        for page in stamped_reader.pages:
+            combined.add_page(page)
+
+    output = io.BytesIO()
+    combined.write(output)
+    output.seek(0)
+    return FileResponse(output, content_type="application/pdf")

@@ -4,12 +4,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 
 
-def stamp_order_banner(source_file, order_id, pickup_pin):
-    """
-    Takes an open file-like object (the original PDF), returns a new
-    in-memory PDF with a banner stamped on page 1 only. Never touches
-    the original stored file.
-    """
+def stamp_order_banner(source_file, order_id, pickup_pin, title=None):
     source_file.seek(0)
     reader = PdfReader(source_file)
     writer = PdfWriter()
@@ -20,7 +15,10 @@ def stamp_order_banner(source_file, order_id, pickup_pin):
 
     banner_buffer = io.BytesIO()
     c = canvas.Canvas(banner_buffer, pagesize=(page_width, page_height))
-    banner_text = f"Order #{order_id} | Pickup PIN: {pickup_pin}"
+    if title:
+        banner_text = f"{title} | Order #{order_id} | Pickup PIN: {pickup_pin}"
+    else:
+        banner_text = f"Order #{order_id} | Pickup PIN: {pickup_pin}"
     c.setFont("Helvetica-Bold", 12)
     c.drawString(20, page_height - 20, banner_text)
     c.save()
