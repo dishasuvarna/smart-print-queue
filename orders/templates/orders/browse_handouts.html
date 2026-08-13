@@ -91,10 +91,13 @@
             </div>
             {% endfor %}
         {% else %}
-            <div class="empty">
-                <p>No handouts found{% if query %} for "{{ query }}"{% endif %}.</p>
-            </div>
-        {% endif %}
+    <div class="empty">
+        <p>No handouts found{% if query %} for "{{ query }}"{% endif %}.</p>
+        <p style="font-size:13px; margin-top:8px;">
+            If your professor mentioned a handout that isn't listed yet, it may not have been uploaded to the shop yet — ask your professor or visit the print shop directly to check.
+        </p>
+    </div>
+{% endif %}
 
         <!-- <a class="fallback" href="#">Can't find it? Let the shop know →</a> -->
     </div>
