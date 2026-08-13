@@ -67,8 +67,10 @@
         <div class="row"><span class="label">Total</span><span class="value">₹{{ order.total_price }}</span></div>
         {% if order.printed_at %}
     <div class="row"><span class="label">Print status</span><span class="value">Printed on {{ order.printed_at }}</span></div>
-{% else %}
+{% elif order.status == "PAID" %}
     <div class="row"><span class="label">Print status</span><span class="status">Payment confirmed — printing in progress</span></div>
+{% else %}
+    <div class="row"><span class="label">Print status</span><span class="status">Pending — awaiting payment confirmation</span></div>
 {% endif %}
     </div>
 </body>
