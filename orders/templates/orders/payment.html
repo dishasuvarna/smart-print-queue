@@ -56,6 +56,10 @@
         <div class="row"><span class="label">Copies</span><span class="value">{{ order.copies }}</span></div>
         <div class="row"><span class="label">Total</span><span class="value">₹{{ order.total_price }}</span></div>
 
+        <p style="font-size:13px; color:#6b7280; text-align:center; margin:12px 0;">
+    If you see an error after paying, please wait a moment and check your order status before retrying — your payment may have still gone through.
+</p>
+
         <button id="pay-btn">Pay ₹{{ order.total_price }}</button>
     </div>
 
