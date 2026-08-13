@@ -22,9 +22,11 @@ urlpatterns = [
     path("vendor/", vendor_dashboard, name="vendor_dashboard"),
     path("vendor/order/<int:order_id>/mark-printed/", mark_printed, name="mark_printed"),
     path("vendor/pending-count/", pending_handout_count, name="pending_handout_count"),
-    path("vendor/handout/<int:handout_id>/mark-batch-printed/", mark_batch_printed, name="mark_batch_printed"),
+    # path("vendor/handout/<int:handout_id>/mark-batch-printed/", mark_batch_printed, name="mark_batch_printed"),
     path("vendor/order/<int:order_id>/print/", print_order, name="print_order"),
-    path("vendor/handout/<int:handout_id>/print-batch/", print_batch, name="print_batch"),
+    # path("vendor/handout/<int:handout_id>/print-batch/", print_batch, name="print_batch"),
+    path("vendor/print-batch/", print_batch, name="print_batch"),
+    path("vendor/mark-batch-printed/", mark_batch_printed, name="mark_batch_printed"),
 ]
 
 from django.conf import settings

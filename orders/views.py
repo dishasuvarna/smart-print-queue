@@ -121,6 +121,33 @@ def is_authorized_vendor(user):
     return user.is_superuser or user.username == "dishag"
 
 
+# @login_required
+# @user_passes_test(is_authorized_vendor)
+# def vendor_dashboard(request):
+#     pending = Order.objects.filter(status="PAID", printed_at__isnull=True).order_by("created_at")
+
+#     upload_orders = pending.filter(handout__isnull=True)
+
+#     handout_orders = pending.filter(handout__isnull=False)
+#     handout_batches = {}
+#     for order in handout_orders:
+#         h = order.handout
+#         if h.id not in handout_batches:
+#             handout_batches[h.id] = {
+#                 "handout": h,
+#                 "orders": [],
+#                 "total_copies": 0,
+#             }
+#         handout_batches[h.id]["orders"].append(order)
+#         handout_batches[h.id]["total_copies"] += order.copies
+
+#     return render(request, "orders/vendor.html", {
+#         "upload_orders": upload_orders,
+#         "handout_batches": handout_batches.values(),
+#     })
+
+MAX_PAGES_PER_BATCH = 200
+
 @login_required
 @user_passes_test(is_authorized_vendor)
 def vendor_dashboard(request):
@@ -129,21 +156,29 @@ def vendor_dashboard(request):
     upload_orders = pending.filter(handout__isnull=True)
 
     handout_orders = pending.filter(handout__isnull=False)
-    handout_batches = {}
+    handout_groups = {}
     for order in handout_orders:
         h = order.handout
-        if h.id not in handout_batches:
-            handout_batches[h.id] = {
-                "handout": h,
-                "orders": [],
-                "total_copies": 0,
-            }
-        handout_batches[h.id]["orders"].append(order)
-        handout_batches[h.id]["total_copies"] += order.copies
+        handout_groups.setdefault(h.id, {"handout": h, "orders": []})
+        handout_groups[h.id]["orders"].append(order)
+
+    handout_batches = []
+    for group in handout_groups.values():
+        h = group["handout"]
+        current_batch = {"handout": h, "orders": [], "total_copies": 0, "total_pages": 0, "part": 1}
+        for order in group["orders"]:
+            order_pages = order.copies * h.page_count
+            if current_batch["total_pages"] + order_pages > MAX_PAGES_PER_BATCH and current_batch["orders"]:
+                handout_batches.append(current_batch)
+                current_batch = {"handout": h, "orders": [], "total_copies": 0, "total_pages": 0, "part": current_batch["part"] + 1}
+            current_batch["orders"].append(order)
+            current_batch["total_copies"] += order.copies
+            current_batch["total_pages"] += order_pages
+        handout_batches.append(current_batch)
 
     return render(request, "orders/vendor.html", {
         "upload_orders": upload_orders,
-        "handout_batches": handout_batches.values(),
+        "handout_batches": handout_batches,
     })
 
 
@@ -168,8 +203,9 @@ def mark_printed(request, order_id):
 
 @login_required
 @user_passes_test(is_authorized_vendor)
-def mark_batch_printed(request, handout_id):
-    orders = Order.objects.filter(handout_id=handout_id, status="PAID", printed_at__isnull=True)
+def mark_batch_printed(request):
+    order_ids = request.POST.get("orders", "").split(",")
+    orders = Order.objects.filter(id__in=order_ids, status="PAID", printed_at__isnull=True)
     for order in orders:
         order.printed_at = timezone.now()
         order.save(update_fields=["printed_at"])
@@ -221,14 +257,16 @@ def print_order(request, order_id):
 
 @login_required
 @user_passes_test(is_authorized_vendor)
-def print_batch(request, handout_id):
+def print_batch(request):
+    order_ids = request.GET.get("orders", "").split(",")
+    orders = Order.objects.filter(id__in=order_ids, status="PAID", printed_at__isnull=True)
+    if not orders:
+        return HttpResponse("No orders found", status=404)
+
+    handout = orders.first().handout
     from .pdf_utils import stamp_order_banner
-    from .models import Handout
     from pypdf import PdfWriter, PdfReader
     import io
-
-    handout = Handout.objects.get(id=handout_id)
-    orders = Order.objects.filter(handout_id=handout_id, status="PAID", printed_at__isnull=True)
 
     combined = PdfWriter()
     for order in orders:

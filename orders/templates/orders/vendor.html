@@ -32,24 +32,31 @@ button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:
 
 <h2>Handout Batches ({{ handout_batches|length }})</h2>
 <table>
-<tr><th>Handout</th><th>Breakdown</th><th>Total Copies</th><th>Action</th></tr>
+<tr><th>Handout</th><th>Part</th><th>Breakdown</th><th>Total Copies</th><th>Total Pages</th><th>Action</th></tr>
 {% for batch in handout_batches %}
 <tr>
     <td>{{ batch.handout.title }}</td>
+    <td>Part {{ batch.part }}</td>
     <td>
         {% for order in batch.orders %}
             Order #{{ order.id }} (PIN {{ order.pickup_pin }}): {{ order.copies }} copies<br>
         {% endfor %}
     </td>
     <td><b>{{ batch.total_copies }}</b></td>
+    <td>{{ batch.total_pages }}</td>
     <td>
-        <button class="print-btn" data-url="{% url 'print_batch' batch.handout.id %}">Print</button>
-        <form method="post" action="{% url 'mark_batch_printed' batch.handout.id %}" style="display:inline;">{% csrf_token %}<button type="submit">Mark Batch Ready</button></form>
+        {% with order_ids=batch.orders|join:"," %}
+        <button class="print-batch-btn" data-url="{% url 'print_batch' %}?orders={% for o in batch.orders %}{{ o.id }}{% if not forloop.last %},{% endif %}{% endfor %}">Print</button>
+        <form method="post" action="{% url 'mark_batch_printed' %}" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="orders" value="{% for o in batch.orders %}{{ o.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
+            <button type="submit">Mark Batch Ready</button>
+        </form>
+        {% endwith %}
     </td>
 </tr>
 {% endfor %}
 </table>
-
 <script>
 function updateHandoutBadge() {
     fetch("{% url 'pending_handout_count' %}")
@@ -64,7 +71,11 @@ function updateHandoutBadge() {
 updateHandoutBadge();
 setInterval(updateHandoutBadge, 15000);
 
-document.querySelectorAll('.print-btn').forEach(btn => {
+// document.querySelectorAll('.print-btn').forEach(btn => {
+//     btn.addEventListener('click', () => window.open(btn.dataset.url, '_blank'));
+// });
+
+document.querySelectorAll('.print-btn, .print-batch-btn').forEach(btn => {
     btn.addEventListener('click', () => window.open(btn.dataset.url, '_blank'));
 });
 </script>
