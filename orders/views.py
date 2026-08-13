@@ -196,12 +196,36 @@ def print_order(request, order_id):
     stamped = stamp_order_banner(source, order.id, order.pickup_pin)
     return FileResponse(stamped, content_type="application/pdf")
 
+# @login_required
+# @user_passes_test(is_authorized_vendor)
+# def print_batch(request, handout_id):
+#     from .pdf_utils import stamp_order_banner
+#     from .models import Handout
+#     from pypdf import PdfWriter
+
+#     handout = Handout.objects.get(id=handout_id)
+#     orders = Order.objects.filter(handout_id=handout_id, status="PAID", printed_at__isnull=True)
+
+#     combined = PdfWriter()
+#     for order in orders:
+#         stamped = stamp_order_banner(handout.file, order.id, order.pickup_pin, title=handout.title)
+#         from pypdf import PdfReader
+#         stamped_reader = PdfReader(stamped)
+#         for page in stamped_reader.pages:
+#             combined.add_page(page)
+
+#     output = io.BytesIO()
+#     combined.write(output)
+#     output.seek(0)
+#     return FileResponse(output, content_type="application/pdf")
+
 @login_required
 @user_passes_test(is_authorized_vendor)
 def print_batch(request, handout_id):
     from .pdf_utils import stamp_order_banner
     from .models import Handout
-    from pypdf import PdfWriter
+    from pypdf import PdfWriter, PdfReader
+    import io
 
     handout = Handout.objects.get(id=handout_id)
     orders = Order.objects.filter(handout_id=handout_id, status="PAID", printed_at__isnull=True)
@@ -209,10 +233,11 @@ def print_batch(request, handout_id):
     combined = PdfWriter()
     for order in orders:
         stamped = stamp_order_banner(handout.file, order.id, order.pickup_pin, title=handout.title)
-        from pypdf import PdfReader
-        stamped_reader = PdfReader(stamped)
-        for page in stamped_reader.pages:
-            combined.add_page(page)
+        for _ in range(order.copies):
+            stamped.seek(0)
+            stamped_reader = PdfReader(stamped)
+            for page in stamped_reader.pages:
+                combined.add_page(page)
 
     output = io.BytesIO()
     combined.write(output)
