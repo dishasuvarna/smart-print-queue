@@ -95,6 +95,10 @@
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="field">
+                <label>Email address</label>
+                <input type="email" name="student_email" placeholder="you@college.edu" required>
+            </div>
+            <div class="field">
     <label>PDF file</label>
     <input type="file" name="file" id="file-input" accept="application/pdf,.pdf" required>
     <p id="size-warning" style="color:#b91c1c; font-size:13px; margin-top:6px; display:none;"></p>
