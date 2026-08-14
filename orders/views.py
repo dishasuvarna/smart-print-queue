@@ -21,19 +21,24 @@ def upload_order(request):
         uploaded_file = request.FILES.get("file")
         student_email = request.POST.get("student_email")
         copies = int(request.POST.get("copies", 1))
+        is_color = request.POST.get("is_color") == "true"
+        is_double_sided = request.POST.get("is_double_sided") == "true"
 
         try:
             page_count = validate_pdf_upload(uploaded_file)
         except UploadValidationError as e:
             return render(request, "orders/upload.html", {"error": str(e)})
 
-        total_price = PRICE_PER_PAGE * page_count * copies
+        color_multiplier = 3 if is_color else 1  # color costs more per page — adjust rate as needed
+        total_price = PRICE_PER_PAGE * page_count * copies * color_multiplier
 
         order = Order.objects.create(
             student_email=student_email,
             file=uploaded_file,
             page_count=page_count,
             copies=copies,
+            is_color=is_color,
+            is_double_sided=is_double_sided,
             total_price=total_price,
             status="PENDING",
         )
