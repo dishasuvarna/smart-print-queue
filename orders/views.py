@@ -29,8 +29,9 @@ def upload_order(request):
         except UploadValidationError as e:
             return render(request, "orders/upload.html", {"error": str(e)})
 
-        color_multiplier = 3 if is_color else 1  # color costs more per page — adjust rate as needed
-        total_price = PRICE_PER_PAGE * page_count * copies * color_multiplier
+        # Flat per-page rate based on color only — sides doesn't affect price.
+        per_page_rate = 10 if is_color else 5
+        total_price = per_page_rate * page_count * copies
 
         order = Order.objects.create(
             student_email=student_email,
