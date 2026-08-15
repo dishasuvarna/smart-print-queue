@@ -89,3 +89,24 @@ def reconcile_pending_payments():
             order.save(update_fields=["status"])
             from notifications.tasks import send_shopkeeper_notification
             send_shopkeeper_notification.delay(order.id)
+
+@shared_task
+def cleanup_expired_order_files():
+    """
+    Deletes uploaded files for orders that expired or were cancelled
+    without ever being printed — these files serve no further purpose
+    and would otherwise sit in storage indefinitely. Never touches
+    Handout files, which are shared and long-lived by design.
+    """
+    stale_orders = Order.objects.filter(
+        status__in=["EXPIRED", "CANCELLED"],
+        handout__isnull=True,
+    ).exclude(file="")
+    count = 0
+    for order in stale_orders:
+        if order.file:
+            order.file.delete(save=False)
+            order.save(update_fields=["file"])
+            count += 1
+    if count:
+        logger.info("Cleaned up %d expired/cancelled order files", count)

@@ -24,4 +24,8 @@ app.conf.beat_schedule = {
         "task": "orders.tasks.reconcile_pending_payments",
         "schedule": 600.0,  # every 10 minutes
     },
+    "cleanup-expired-order-files": {
+        "task": "orders.tasks.cleanup_expired_order_files",
+        "schedule": 3600.0,  # every hour
+    },
 }
