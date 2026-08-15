@@ -39,6 +39,7 @@ A campus print-shop ordering and fulfillment platform. Students upload their own
 | Payments | Razorpay | Checkout, signature-verified webhooks, live settlement |
 | Email | Brevo | Handout-verification and order-ready notifications |
 | Hosting | Render | Web service, worker, and scheduler in one deployment |
+| Uptime monitoring | UptimeRobot | Pings the live site every 5 minutes to prevent Render's free-tier instance from spinning down due to inactivity |
 
 **Payment integrity:** every payment is confirmed server-to-server via a signature-verified Razorpay webhook — the checkout screen never determines order status on its own. Duplicate webhook deliveries are handled idempotently, and a scheduled reconciliation job catches any payment that succeeded without a webhook arriving.
 
@@ -68,6 +69,8 @@ See `.env.example` for the full list, including database, Redis, Razorpay, Brevo
 ## Deployment
 
 Deployed on Render via `start.sh`, which runs the web server alongside the Celery worker and scheduler in a single service. Static and media files are served through WhiteNoise and Supabase Storage respectively.
+
+Render's free tier spins the service down after periods of inactivity, which would otherwise cause a slow first response. To keep the app responsive, [UptimeRobot](https://uptimerobot.com) pings the live URL every 5 minutes, keeping the service continuously warm.
 
 ---
 
