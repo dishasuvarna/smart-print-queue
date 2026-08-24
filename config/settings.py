@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "orders",
     "notifications",
+    "axes",
 ]
 
 MIDDLEWARE = [
@@ -42,9 +43,24 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "axes.middleware.AxesMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# ---------------------------------------------------------------------------
+# Login rate limiting (django-axes)
+# ---------------------------------------------------------------------------
+AXES_FAILURE_LIMIT = 3
+AXES_COOLOFF_TIME = 0.0084  # ~30 seconds, in hours (30/3600)
+AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT = False
+AXES_LOCKOUT_PARAMETERS = ["username", "ip_address"]
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
