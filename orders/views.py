@@ -15,6 +15,8 @@ from .tasks import process_pdf
 
 PRICE_PER_PAGE = 2  # ₹2 per page, adjust as needed
 
+def health_check(request):
+    return HttpResponse("OK")
 
 def upload_order(request):
     if request.method == "POST":

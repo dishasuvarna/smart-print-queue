@@ -12,6 +12,8 @@ from orders.views import (
 )
 from orders.webhooks import razorpay_webhook
 
+from orders.views import health_check
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", upload_order, name="upload_order"),
@@ -27,6 +29,7 @@ urlpatterns = [
     # path("vendor/handout/<int:handout_id>/print-batch/", print_batch, name="print_batch"),
     path("vendor/print-batch/", print_batch, name="print_batch"),
     path("vendor/mark-batch-printed/", mark_batch_printed, name="mark_batch_printed"),
+    path("health/", health_check, name="health_check"),
 ]
 
 from django.conf import settings
