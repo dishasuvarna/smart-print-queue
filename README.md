@@ -1,108 +1,83 @@
-# Smart print queue — infrastructure starter kit
+# CampusPrint
 
-A drop-in config layer implementing "identical behavior locally and in
-production": environment-driven settings, Postgres everywhere (dev
-included), Redis-backed Celery with automatic retries, a signature-verified
-and idempotent payment webhook, upload validation, and structured logging.
-Built to sit inside your existing Django project without restructuring it —
-copy these files into matching folders (`config/`, `orders/`,
-`notifications/`) and wire up your own models, views, and templates around
-them.
+A campus print-shop ordering and fulfillment platform. Students upload their own documents or order pre-approved lecturer handouts, pay online, and collect a printed copy using a pickup PIN. Professors submit handouts directly; the shop verifies and activates them before students can order. The shop manages the entire fulfillment queue — printing, batching, and marking orders complete — from a single dashboard.
 
-## What's included, mapped to each requirement
+**Live site:** https://smart-print-queue.onrender.com
 
-| # | Requirement | Where it's implemented |
+---
+
+## What it does
+
+**For students**
+- Upload a PDF directly, or browse/search shop-verified lecturer handouts by title, course, or lecturer name
+- Choose copies, color mode (B&W / Full Color), and single- or double-sided printing
+- Pay securely online (UPI, cards, netbanking, and more via Razorpay)
+- Receive a pickup PIN and an email as soon as the order is ready for collection
+
+**For professors**
+- Submit a handout (file, title, course, semester, contact number, page count) directly through a dedicated login
+- Freely edit the submission until the shop verifies and activates it
+- Submissions are locked from further edits once live, preventing pricing or content changes mid-order
+
+**For the shop**
+- A live vendor dashboard shows all paid, unprinted orders — student uploads individually, handout orders automatically batched by title with combined copy counts
+- One click opens a print-ready PDF, freshly stamped with the order number and pickup PIN on the first page — nothing is downloaded or stored locally
+- Large handout batches split automatically into manageable print runs
+- A persistent badge flags any handout awaiting verification
+- Marking an order printed instantly notifies the student and clears completed files from storage
+
+---
+
+## How it works
+
+| Layer | Technology | Role |
 |---|---|---|
-| 1 | Postgres locally and in production | `docker-compose.yml` (local) + `config/settings.py` reading `DATABASE_URL` |
-| 2 | Upstash in prod, local/Docker Redis in dev, same Celery config | `docker-compose.yml` + `config/settings.py` + `config/celery.py`, all via `REDIS_URL` |
-| 3 | All config in environment variables | `.env.example` — the only file that differs between environments |
-| 4 | Same Celery tasks in both environments | `orders/tasks.py`, `notifications/tasks.py` — no environment branching anywhere |
-| 5 | Razorpay test → live is a key swap only | `config/settings.py` reads `RAZORPAY_KEY_ID/SECRET` from env; no code path depends on which mode they're from |
-| 6 | Brevo email, queued through Celery | `notifications/tasks.py` |
-| 7 | Webhook signature verification | `orders/webhooks.py` |
-| 8 | Idempotent webhook processing | `orders/webhooks.py` — status check before processing |
-| 9 | Automatic retry for critical tasks | `autoretry_for` + `retry_backoff` on every task in `orders/tasks.py` and `notifications/tasks.py` |
-| 10 | PDF validation (MIME, magic bytes, size, page count) | `orders/validators.py` |
-| 11 | Logging per subsystem | Named loggers (`orders.payments`, `orders.queue`, `orders.pdf`, `notifications.email`) in `config/settings.py` |
-| 12 | Secure production settings via `DEBUG` | `config/settings.py` — `if not DEBUG:` block |
-| 13 | Identical Django/Celery/Redis/Gunicorn config | Everything above reads from env vars, nothing is duplicated per-environment |
-| 14 | GitHub auto-deploy | Render default behavior — see deployment steps below |
-| 15 | Combined process documented as a free-tier trade-off | `start.sh`, plus "Moving off the combined process" section below |
+| Backend | Django | Core application, order logic, role-based admin |
+| Background jobs | Celery + Redis (Upstash) | PDF validation, payment reconciliation, storage cleanup, notifications |
+| Database | PostgreSQL (Supabase) | Orders, handouts, users |
+| File storage | Supabase Storage | Uploaded PDFs and handouts, served independently of app restarts |
+| Payments | Razorpay | Checkout, signature-verified webhooks, live settlement |
+| Email | Brevo | Handout-verification and order-ready notifications |
+| Hosting | Render | Web service, worker, and scheduler in one deployment |
+| Uptime monitoring | UptimeRobot | Pings the live site every 5 minutes to prevent Render's free-tier instance from spinning down due to inactivity |
+
+**Payment integrity:** every payment is confirmed server-to-server via a signature-verified Razorpay webhook — the checkout screen never determines order status on its own. Duplicate webhook deliveries are handled idempotently, and a scheduled reconciliation job catches any payment that succeeded without a webhook arriving.
+
+**Storage lifecycle:** student-uploaded files are deleted the moment an order is printed, and again automatically if an order expires unpaid — keeping storage usage bounded over time. Handout files are shared across many orders and are retained until the shop removes them.
+
+**Roles:** access is enforced at the account level — professors can submit and edit only their own handouts prior to verification; only the shop's account can activate a handout or access the fulfillment dashboard.
+
+---
 
 ## Local development
 
 ```bash
 cp .env.example .env
-docker compose up -d              # starts local Postgres + Redis
+docker compose up -d          # Postgres + Redis for local development
 python manage.py migrate
 python manage.py runserver
 
-# in a second terminal
-celery -A config worker --loglevel=info
-
-# in a third terminal (only needed to test scheduled tasks)
-celery -A config beat --loglevel=info
-
-# in a fourth terminal, to receive Razorpay test-mode webhooks locally
-ngrok http 8000
-# then register <ngrok-url>/orders/webhook/ in Razorpay's test dashboard
-```
-
-Because `DATABASE_URL` and `REDIS_URL` point at the Docker containers
-above with the exact same variable names production uses, this is genuinely
-the same code path you'll run after deployment — not a simplified stand-in
-for it.
-
-## Production deployment (Render)
-
-1. Push to GitHub. Create a new Web Service in Render from the repo —
-   auto-deploy on push is on by default, so every push to `main` redeploys
-   without manual steps (point 14).
-2. Set the Render **Start Command** to `bash start.sh`.
-3. Add environment variables in Render's dashboard (values only — same
-   names as `.env.example`):
-   - `DEBUG=False`
-   - `DATABASE_URL` — from Supabase (Project Settings → Database → Connection string)
-   - `REDIS_URL` — from Upstash (use the `rediss://` TLS URL, not `redis://`)
-   - `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`
-   - `BREVO_API_KEY`, `DEFAULT_FROM_EMAIL`, `SHOPKEEPER_EMAIL`
-   - `ALLOWED_HOSTS=yourapp.onrender.com`
-4. Register your webhook URL in Razorpay's dashboard:
-   `https://yourapp.onrender.com/orders/webhook/`
-5. Deploy. `DEBUG=False` alone switches on `SECURE_SSL_REDIRECT`, secure
-   cookies, and HSTS — there's no separate production settings file to
-   maintain (point 12).
-
-## Going from test to live payments later
-
-Change three values in Render's environment variables —
-`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` —
-from `rzp_test_...` to `rzp_live_...` after completing Razorpay KYC.
-No code changes (point 5).
-
-## Moving off the combined free-tier process later
-
-`start.sh` runs Gunicorn, the Celery worker, and Celery Beat in a single
-process as a documented cost-saving trade-off for Render's free tier
-(point 15). When you move to paid hosting — a Render Background Worker,
-Railway, a VPS — split it into three services, each running one of these
-commands, completely unchanged:
-
-```bash
-gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
-celery -A config worker --loglevel=info
+# in separate terminals
+celery -A config worker --loglevel=info --pool=solo
 celery -A config beat --loglevel=info
 ```
 
-Nothing in `config/`, `orders/`, or `notifications/` needs to change —
-only how these three commands are distributed across processes.
+## Environment variables
 
-## Not included here (add to your existing project)
+See `.env.example` for the full list, including database, Redis, Razorpay, Brevo, and Supabase Storage credentials.
 
-This kit intentionally leaves out `models.py`, `views.py` for the order
-flow, `urls.py`, and templates/frontend — those are specific to your
-existing codebase and shouldn't be dictated by an infrastructure layer.
-`orders/tasks.py` and `orders/webhooks.py` assume an `Order` model with at
-minimum: `status`, `razorpay_order_id`, `pickup_pin`, `page_count`,
-`copies`, `student_email`, and `created_at` fields — adjust field names to
-match your own model.
+## Deployment
+
+Deployed on Render via `start.sh`, which runs the web server alongside the Celery worker and scheduler in a single service. Static and media files are served through WhiteNoise and Supabase Storage respectively.
+
+Render's free tier spins the service down after periods of inactivity, which would otherwise cause a slow first response. To keep the app responsive, [UptimeRobot](https://uptimerobot.com) pings the live URL every 5 minutes, keeping the service continuously warm.
+
+---
+
+## Project structure
+
+```
+config/       Django settings, Celery app, URL routing
+orders/       Order and Handout models, views, admin, background tasks, webhooks
+notifications/  Email notifications via Brevo
+```
