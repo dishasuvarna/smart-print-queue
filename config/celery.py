@@ -13,6 +13,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 app = Celery("smart_print")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
+app.conf.worker_send_task_events = False
+app.conf.task_send_sent_event = False
 
 # Celery Beat schedule — same schedule, same tasks, in both environments.
 app.conf.beat_schedule = {
