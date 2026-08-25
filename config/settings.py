@@ -106,6 +106,9 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Kolkata"
 CELERY_TASK_TRACK_STARTED = True
+
+CELERY_TASK_RESULT_EXPIRES = 3600 
+CELERY_TASK_IGNORE_RESULT = True 
 # Late acks + reject-on-lost-worker: a task that dies mid-run (e.g. a Render
 # free-tier restart) gets redelivered instead of silently vanishing.
 # Per-task retry/backoff is layered on top of this in orders/tasks.py
