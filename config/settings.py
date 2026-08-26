@@ -117,7 +117,8 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 CELERY_BROKER_TRANSPORT_OPTIONS = {
-    "polling_interval": 30.0,  # check Redis every 30s instead of ~every 1s
+    "polling_interval": 30.0,
+    "visibility_timeout": 3600,  # check Redis every 30s instead of ~every 1s
 }
 
 USE_TZ = True
