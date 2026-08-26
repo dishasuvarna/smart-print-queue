@@ -12,6 +12,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 app = Celery("smart_print")
 app.config_from_object("django.conf:settings", namespace="CELERY")
+app.conf.broker_transport_options = {
+    "polling_interval": 30.0,
+}
 app.autodiscover_tasks()
 app.conf.worker_send_task_events = False
 app.conf.task_send_sent_event = False
