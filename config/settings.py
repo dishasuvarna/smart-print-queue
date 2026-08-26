@@ -117,8 +117,9 @@ CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 CELERY_BROKER_TRANSPORT_OPTIONS = {
+    "visibility_timeout": 3600,
+    "brpop_timeout": 30,  # Holds the BRPOP connection open for 30s on Redis
     "polling_interval": 30.0,
-    "visibility_timeout": 3600,  # check Redis every 30s instead of ~every 1s
 }
 
 USE_TZ = True
