@@ -43,6 +43,8 @@ class Handout(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
+        if self.file and self.file.size > 50 * 1024 * 1024:
+            raise ValidationError("Handout file exceeds 50MB limit.")
         if self.is_active and self.price_per_copy is None:
             raise ValidationError("Price could not be calculated — page count is missing.")
 
