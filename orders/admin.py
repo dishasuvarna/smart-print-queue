@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils import timezone
-from .models import Order, Handout
+from .models import Order, Handout, PricingSettings
 
 PROFESSOR_FIELDS = ["title", "course_name", "lecturer_name", "semester", "contact_number", "file"]
 
@@ -39,3 +39,20 @@ def mark_as_printed(modeladmin, request, queryset):
 class OrderAdmin(admin.ModelAdmin):
     list_display = ("id", "status", "printed_at", "created_at")
     actions = [mark_as_printed]
+
+@admin.register(PricingSettings)
+class PricingSettingsAdmin(admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return is_shopkeeper(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        return is_shopkeeper(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return is_shopkeeper(request.user)
+
+    def has_add_permission(self, request):
+        return False  # singleton — never allow creating a second row
+
+    def has_delete_permission(self, request, obj=None):
+        return False

@@ -1,4 +1,6 @@
 from django.db import models
+# from pypdf import PdfReader
+# from pypdf.errors import PdfReadError
 
 
 # class Handout(models.Model):
@@ -100,3 +102,19 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order #{self.id} — {self.status}"
+
+class PricingSettings(models.Model):
+    bw_rate_per_page = models.DecimalField(max_digits=6, decimal_places=2, default=5)
+    color_rate_per_page = models.DecimalField(max_digits=6, decimal_places=2, default=10)
+
+    def save(self, *args, **kwargs):
+        self.pk = 1  # singleton — only one row ever exists
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_rates(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+    def __str__(self):
+        return "Pricing Settings"

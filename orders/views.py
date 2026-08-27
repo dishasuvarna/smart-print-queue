@@ -9,7 +9,7 @@ from django.db.models import Q
 import razorpay
 from django.conf import settings
 
-from .models import Order, Handout
+from .models import Order, Handout, PricingSettings
 from .validators import validate_pdf_upload, UploadValidationError
 from .tasks import process_pdf
 
@@ -31,8 +31,8 @@ def upload_order(request):
         except UploadValidationError as e:
             return render(request, "orders/upload.html", {"error": str(e)})
 
-        # Flat per-page rate based on color only — sides doesn't affect price.
-        per_page_rate = 10 if is_color else 5
+        rates = PricingSettings.get_rates()
+        per_page_rate = rates.color_rate_per_page if is_color else rates.bw_rate_per_page
         total_price = per_page_rate * page_count * copies
 
         order = Order.objects.create(
