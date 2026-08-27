@@ -29,8 +29,8 @@ class Handout(models.Model):
     lecturer_name = models.CharField(max_length=150, blank=True)
     semester = models.CharField(max_length=50)
     contact_number = models.CharField(max_length=15)
-    file = models.FileField(upload_to="handouts/")
-    page_count = models.PositiveIntegerField()  # required, no longer optional
+    file = models.FileField(upload_to="handouts/", help_text="PDF only, max 50MB.")
+    page_count = models.PositiveIntegerField(null=True, blank=True, editable=False)
     price_per_copy = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -43,8 +43,19 @@ class Handout(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
-        if self.file and self.file.size > 50 * 1024 * 1024:
-            raise ValidationError("Handout file exceeds 50MB limit.")
+        from pypdf import PdfReader
+        from pypdf.errors import PdfReadError
+        if self.file:
+            if self.file.size > 50 * 1024 * 1024:
+                raise ValidationError("Handout file exceeds 50MB limit.")
+        try:
+            self.file.seek(0)
+            reader = PdfReader(self.file)
+            self.page_count = len(reader.pages)
+            self.file.seek(0)
+        except PdfReadError:
+            raise ValidationError("This PDF appears to be corrupted or invalid.")
+
         if self.is_active and self.price_per_copy is None:
             raise ValidationError("Price could not be calculated — page count is missing.")
 

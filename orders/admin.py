@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils import timezone
 from .models import Order, Handout
 
-PROFESSOR_FIELDS = ["title", "course_name", "lecturer_name", "semester", "contact_number", "file", "page_count"]
+PROFESSOR_FIELDS = ["title", "course_name", "lecturer_name", "semester", "contact_number", "file"]
 
 
 def is_shopkeeper(user):
