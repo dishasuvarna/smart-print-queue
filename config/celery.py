@@ -47,14 +47,14 @@ app = Celery("smart_print")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
 app.autodiscover_tasks()
-app.conf.worker_send_task_events = False
-app.conf.task_send_sent_event = False
+# app.conf.worker_send_task_events = False
+# app.conf.task_send_sent_event = False
 
 app.conf.update(
     worker_enable_remote_control=False,  # Stops celery.pidbox control queue polling & PUBLISH spam
     worker_send_task_events=False,       # Disables task event publishing
     task_send_sent_event=False,          # Disables task sent event publishing
-    result_expires=3600,
+    # result_expires=3600,
 )
 app.conf.beat_schedule = {
     "expire-stale-orders": {

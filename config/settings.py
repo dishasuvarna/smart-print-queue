@@ -210,3 +210,14 @@ LOGGING = {
 }
 
 LOGIN_URL = "/admin/login/"
+
+# ---------------------------------------------------------------------------
+# Caching (Used by django-axes for rate limiting)
+# ---------------------------------------------------------------------------
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+    }
+}
+AXES_CACHE = "default"
