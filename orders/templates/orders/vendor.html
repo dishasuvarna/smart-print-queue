@@ -1,12 +1,24 @@
 <!DOCTYPE html>
-<html><head><title>Vendor Dashboard</title>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">   
+<title>Vendor Dashboard</title>
 <style>
 body{font-family:sans-serif;background:#f4f5f7;padding:30px;}
 h2{margin-top:32px;}
-table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;margin-bottom:20px;}
-th,td{padding:12px;text-align:left;border-bottom:1px solid #eee;}
+.table-wrap{overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:8px;}
+table{width:100%;border-collapse:collapse;background:#fff;overflow:hidden;margin-bottom:20px; min-width:600px;}
+th,td{padding:12px;text-align:left;border-bottom:1px solid #eee; white-space:nowrap;}
 th{background:#f9fafb;}
-button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-right:6px;}
+button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-right:6px; font-size:14px;}
+#handout-badge{margin-bottom:16px;}
+
+@media (max-width: 640px) {
+    body{padding:14px;}
+    h2{font-size:18px; margin-top:24px;}
+    button{padding:10px 14px; font-size:13px; display:block; width:100%; margin:4px 0;}
+}
 </style></head>
 <body>
 <!-- <div id="handout-badge" style="display:none; background:#dc2626; color:#fff; padding:6px 14px; border-radius:20px; display:inline-block; font-weight:600; font-size:14px;">
@@ -20,6 +32,7 @@ button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:
 
 
 <h2>Student Uploads ({{ upload_orders|length }})</h2>
+<div class="table-wrap">
 <table>
 <tr><th>Order #</th><th>Pages</th><th>Copies</th><th>PIN</th><th>Action</th></tr>
 {% for order in upload_orders %}
@@ -35,8 +48,10 @@ button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:
 </tr>
 {% endfor %}
 </table>
+</div>
 
 <h2>Handout Batches ({{ handout_batches|length }})</h2>
+<div class="table-wrap">
 <table>
 <tr><th>Handout</th><th>Part</th><th>Breakdown</th><th>Total Copies</th><th>Total Pages</th><th>Action</th></tr>
 {% for batch in handout_batches %}
@@ -63,6 +78,7 @@ button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:
 </tr>
 {% endfor %}
 </table>
+</div>
 <script>
 function updateHandoutBadge() {
     fetch("{% url 'pending_handout_count' %}")
