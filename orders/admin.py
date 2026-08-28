@@ -8,6 +8,7 @@ PROFESSOR_FIELDS = ["title", "course_name", "lecturer_name", "semester", "contac
 def is_shopkeeper(user):
     return user.is_superuser or user.username == "dishag"
 
+from django.utils.html import format_html
 
 @admin.register(Handout)
 class HandoutAdmin(admin.ModelAdmin):
@@ -28,6 +29,15 @@ class HandoutAdmin(admin.ModelAdmin):
         elif obj and obj.is_active:
             readonly += PROFESSOR_FIELDS
         return readonly
+
+    change_form_template = None  # keep default template
+
+    def render_change_form(self, request, context, *args, **kwargs):
+        context["title"] = format_html(
+            '{} &nbsp; <a href="/vendor/" style="font-size:14px;">← Back to Vendor Dashboard</a>',
+            context["title"],
+        )
+        return super().render_change_form(request, context, *args, **kwargs)
 
 
 @admin.action(description="Mark selected orders as printed")
