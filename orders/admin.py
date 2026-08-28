@@ -52,7 +52,9 @@ class PricingSettingsAdmin(admin.ModelAdmin):
         return is_shopkeeper(request.user)
 
     def has_add_permission(self, request):
-        return False  # singleton — never allow creating a second row
+        # Allow adding only if no row exists yet — enforces the singleton
+        # without permanently hiding the Add button.
+        return is_shopkeeper(request.user) and not PricingSettings.objects.exists()
 
     def has_delete_permission(self, request, obj=None):
         return False
