@@ -30,14 +30,19 @@ class HandoutAdmin(admin.ModelAdmin):
             readonly += PROFESSOR_FIELDS
         return readonly
 
-    change_form_template = None  # keep default template
-
-    def render_change_form(self, request, context, *args, **kwargs):
-        context["title"] = format_html(
-            '{} &nbsp; <a href="/vendor/" style="font-size:14px;">← Back to Vendor Dashboard</a>',
-            context["title"],
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        extra_context["title"] = format_html(
+            'Select handout to change &nbsp; <a href="/vendor/" style="font-size:14px;">← Back to Vendor Dashboard</a>'
         )
-        return super().render_change_form(request, context, *args, **kwargs)
+        return super().changelist_view(request, extra_context=extra_context)
+
+    # def render_change_form(self, request, context, *args, **kwargs):
+    #     context["title"] = format_html(
+    #         '{} &nbsp; <a href="/vendor/" style="font-size:14px;">← Back to Vendor Dashboard</a>',
+    #         context["title"],
+    #     )
+    #     return super().render_change_form(request, context, *args, **kwargs)
 
 
 @admin.action(description="Mark selected orders as printed")
