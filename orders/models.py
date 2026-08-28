@@ -107,12 +107,12 @@ class PricingSettings(models.Model):
     bw_rate_per_page = models.DecimalField(max_digits=6, decimal_places=2, default=5)
     color_rate_per_page = models.DecimalField(max_digits=6, decimal_places=2, default=10)
 
-class Meta:
-    verbose_name = "Pricing Settings"
-    verbose_name_plural = "Pricing Settings"
+    class Meta:
+        verbose_name = "Pricing Settings"
+        verbose_name_plural = "Pricing Settings"
 
     def save(self, *args, **kwargs):
-        self.pk = 1  # singleton — only one row ever exists
+        self.pk = 1
         super().save(*args, **kwargs)
 
     @classmethod
