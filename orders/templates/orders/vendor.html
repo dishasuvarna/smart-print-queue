@@ -9,9 +9,15 @@ th{background:#f9fafb;}
 button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-right:6px;}
 </style></head>
 <body>
-<div id="handout-badge" style="display:none; background:#dc2626; color:#fff; padding:6px 14px; border-radius:20px; display:inline-block; font-weight:600; font-size:14px;">
+<!-- <div id="handout-badge" style="display:none; background:#dc2626; color:#fff; padding:6px 14px; border-radius:20px; display:inline-block; font-weight:600; font-size:14px;">
     Handouts Pending: <span id="handout-count">0</span>
-</div>
+</div> -->
+<a href="/admin/orders/handout/?is_active__exact=0" style="text-decoration:none;">
+    <div id="handout-badge" style="display:none; background:#dc2626; color:#fff; padding:6px 14px; border-radius:20px; display:inline-block; font-weight:600; font-size:14px; cursor:pointer;">
+        Handouts Pending: <span id="handout-count">0</span>
+    </div>
+</a>
+
 
 <h2>Student Uploads ({{ upload_orders|length }})</h2>
 <table>
