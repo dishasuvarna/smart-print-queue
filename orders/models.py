@@ -24,7 +24,6 @@ from django.db import models
 
 
 class Handout(models.Model):
-    PRICE_PER_PAGE = 2  # shop's per-page rate for handouts
 
     title = models.CharField(max_length=200)
     course_name = models.CharField(max_length=150, blank=True)
@@ -40,7 +39,8 @@ class Handout(models.Model):
     def save(self, *args, **kwargs):
         # Price is always derived from page count — never manually entered by anyone.
         if self.page_count:
-            self.price_per_copy = self.page_count * self.PRICE_PER_PAGE
+            rate = PricingSettings.get_rates().handout_rate_per_page
+            self.price_per_copy = self.page_count * rate
         super().save(*args, **kwargs)
 
     def clean(self):
@@ -106,6 +106,7 @@ class Order(models.Model):
 class PricingSettings(models.Model):
     bw_rate_per_page = models.DecimalField(max_digits=6, decimal_places=2, default=5)
     color_rate_per_page = models.DecimalField(max_digits=6, decimal_places=2, default=10)
+    handout_rate_per_page = models.DecimalField(max_digits=6, decimal_places=2, default=2)
 
     class Meta:
         verbose_name = "Pricing Settings"
