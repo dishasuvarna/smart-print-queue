@@ -104,12 +104,44 @@
                 <label>Email address</label>
                 <input type="email" name="student_email" placeholder="you@college.edu" required>
             </div>
-            <div class="field">
+            <!-- <div class="field">
     <label>PDF file</label>
     <input type="file" name="file" id="file-input" accept="application/pdf,.pdf" required>
     <p style="font-size:12px; color:#6b7280; margin-top:4px;">PDF only, max 50MB, up to 150 pages. Files are deleted after printing.</p>
     <p id="size-warning" style="color:#b91c1c; font-size:13px; margin-top:6px; display:none;"></p>
+</div> -->
+
+
+<div class="field">
+    <label>PDF file</label>
+    <div id="upload-trigger" style="border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; cursor:pointer; background:#fafafa; font-size:14px; color:#6b7280;">
+        Tap to choose a file
+    </div>
+    <input type="file" name="file" id="file-input" accept="application/pdf,.pdf" required style="display:none;">
+    <p style="font-size:12px; color:#6b7280; margin-top:4px;">PDF only, max 50MB, up to 150 pages. Files are deleted after printing.</p>
+    <p id="size-warning" style="color:#b91c1c; font-size:13px; margin-top:6px; display:none;"></p>
 </div>
+
+<!-- Hidden inputs that actually trigger native pickers -->
+<input type="file" id="picker-files" accept="application/pdf,.pdf" style="display:none;">
+<input type="file" id="picker-gallery" accept="image/*" style="display:none;">
+<input type="file" id="picker-camera" accept="image/*" capture="environment" style="display:none;">
+
+<!-- Source selection modal -->
+<div id="source-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:flex-end; justify-content:center;">
+    <div style="background:#fff; width:100%; max-width:420px; border-radius:16px 16px 0 0; padding:24px; box-sizing:border-box;">
+        <h3 style="margin:0 0 4px; font-size:17px;">Select a source</h3>
+        <p style="font-size:13px; color:#6b7280; margin:0 0 20px;">PDF, JPEG or PNG. Images are converted to PDF automatically.</p>
+        <div style="display:flex; gap:10px;">
+            <button type="button" class="source-btn" data-target="picker-files" style="flex:1; padding:16px 8px; border:1px solid #eee; border-radius:10px; background:#fff; cursor:pointer;">📄<br><span style="font-size:13px;">Files</span></button>
+            <button type="button" class="source-btn" data-target="picker-gallery" style="flex:1; padding:16px 8px; border:1px solid #eee; border-radius:10px; background:#fff; cursor:pointer;">🖼️<br><span style="font-size:13px;">Gallery</span></button>
+            <button type="button" class="source-btn" data-target="picker-camera" style="flex:1; padding:16px 8px; border:1px solid #eee; border-radius:10px; background:#fff; cursor:pointer;">📷<br><span style="font-size:13px;">Camera</span></button>
+        </div>
+        <button type="button" id="close-modal" style="width:100%; margin-top:16px; padding:10px; background:none; border:none; color:#6b7280; font-size:14px;">Cancel</button>
+    </div>
+</div>
+
+
 <div class="field">
     <label>Number of copies</label>
     <input type="number" name="copies" value="1" min="1" required>
@@ -146,5 +178,81 @@ document.getElementById("file-input").addEventListener("change", function() {
     }
 });
 </script>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const modal = document.getElementById("source-modal");
+const trigger = document.getElementById("upload-trigger");
+const realInput = document.getElementById("file-input");
+const label = trigger;
+
+trigger.addEventListener("click", () => { modal.style.display = "flex"; });
+document.getElementById("close-modal").addEventListener("click", () => { modal.style.display = "none"; });
+
+document.querySelectorAll(".source-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        modal.style.display = "none";
+        document.getElementById(btn.dataset.target).click();
+    });
+});
+
+// Files: PDF picked directly — pass straight through, no conversion.
+document.getElementById("picker-files").addEventListener("change", function () {
+    if (this.files[0]) {
+        setRealFile(this.files[0]);
+    }
+});
+
+// Gallery / Camera: image picked — convert to a single-page PDF in-browser.
+["picker-gallery", "picker-camera"].forEach(id => {
+    document.getElementById(id).addEventListener("change", async function () {
+        const imgFile = this.files[0];
+        if (!imgFile) return;
+        label.textContent = "Converting image to PDF...";
+        const pdfBlob = await imageToPdf(imgFile);
+        const pdfFile = new File([pdfBlob], imgFile.name.replace(/\.[^.]+$/, "") + ".pdf", { type: "application/pdf" });
+        setRealFile(pdfFile);
+    });
+});
+
+async function imageToPdf(imgFile) {
+    const dataUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(imgFile);
+    });
+    const img = await new Promise((resolve) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.src = dataUrl;
+    });
+    const { jsPDF } = window.jspdf;
+    const orientation = img.width > img.height ? "l" : "p";
+    const pdf = new jsPDF({ orientation, unit: "px", format: [img.width, img.height] });
+    pdf.addImage(dataUrl, "JPEG", 0, 0, img.width, img.height);
+    return pdf.output("blob");
+}
+
+function setRealFile(file) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    realInput.files = dt.files;
+    label.textContent = file.name;
+
+    const warning = document.getElementById("size-warning");
+    const submitBtn = document.getElementById("submit-btn");
+    if (file.size > 50 * 1024 * 1024) {
+        warning.textContent = "This file is over 50MB — please choose a smaller file.";
+        warning.style.display = "block";
+        submitBtn.disabled = true;
+    } else {
+        warning.style.display = "none";
+        submitBtn.disabled = false;
+    }
+}
+</script>
+
+
 </body>
 </html>
