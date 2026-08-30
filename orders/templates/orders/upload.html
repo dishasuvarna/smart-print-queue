@@ -254,7 +254,10 @@ document.getElementById("finish-camera-btn").addEventListener("click", async () 
 
 async function imagesToPdf(files) {
     const { jsPDF } = window.jspdf;
+    const A4_WIDTH = 595.28;   // A4 in points (72 dpi basis)
+    const A4_HEIGHT = 841.89;
     let pdf = null;
+
     for (const file of files) {
         const dataUrl = await new Promise((resolve) => {
             const reader = new FileReader();
@@ -266,13 +269,27 @@ async function imagesToPdf(files) {
             i.onload = () => resolve(i);
             i.src = dataUrl;
         });
-        const orientation = img.width > img.height ? "l" : "p";
-        if (!pdf) {
-            pdf = new jsPDF({ orientation, unit: "px", format: [img.width, img.height] });
+
+        // Fit the image within A4 bounds, preserving aspect ratio, centered.
+        const imgRatio = img.width / img.height;
+        const pageRatio = A4_WIDTH / A4_HEIGHT;
+        let drawWidth, drawHeight;
+        if (imgRatio > pageRatio) {
+            drawWidth = A4_WIDTH;
+            drawHeight = A4_WIDTH / imgRatio;
         } else {
-            pdf.addPage([img.width, img.height], orientation);
+            drawHeight = A4_HEIGHT;
+            drawWidth = A4_HEIGHT * imgRatio;
         }
-        pdf.addImage(dataUrl, "JPEG", 0, 0, img.width, img.height);
+        const x = (A4_WIDTH - drawWidth) / 2;
+        const y = (A4_HEIGHT - drawHeight) / 2;
+
+        if (!pdf) {
+            pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+        } else {
+            pdf.addPage("a4", "p");
+        }
+        pdf.addImage(dataUrl, "JPEG", x, y, drawWidth, drawHeight, undefined, "FAST");
     }
     return pdf.output("blob");
 }
