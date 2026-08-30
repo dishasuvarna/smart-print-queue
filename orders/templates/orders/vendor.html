@@ -14,6 +14,12 @@ th{background:#f9fafb;}
 button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-right:6px; font-size:14px;}
 #handout-badge{margin-bottom:16px;}
 
+.badge-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.badge-qty { background:#262626; color:#ffffff; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; }
+.badge-bw { background:#f3f4f6; color:#374151; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; }
+.badge-color { background:#dbeafe; color:#1d4ed8; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; }
+.badge-sides { background:#f3e8ff; color:#6b21a8; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; }
+
 @media (max-width: 640px) {
     body{padding:14px;}
     h2{font-size:18px; margin-top:24px;}
@@ -34,7 +40,7 @@ button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:
 <h2>Student Uploads ({{ upload_orders|length }})</h2>
 <div class="table-wrap">
 <table>
-<tr><th>Order #</th><th>Pages</th><th>Copies</th><th>PIN</th><th>Action</th></tr>
+<!-- <tr><th>Order #</th><th>Pages</th><th>Copies</th><th>PIN</th><th>Action</th></tr>
 {% for order in upload_orders %}
 <tr>
     <td>{{ order.id }}</td>
@@ -46,7 +52,37 @@ button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:
         <form method="post" action="{% url 'mark_printed' order.id %}" style="display:inline;">{% csrf_token %}<button type="submit">Mark Printed</button></form>
     </td>
 </tr>
+{% endfor %} -->
+
+<tr><th>Order #</th><th>Pages</th><th>Print Specs</th><th>PIN</th><th>Action</th></tr>
+{% for order in upload_orders %}
+<tr>
+    <td>{{ order.id }}</td>
+    <td>{{ order.page_count }}</td>
+    <td>
+        <div class="badge-row">
+            <span class="badge-qty">QTY: {{ order.copies }}</span>
+            {% if order.is_color %}
+                <span class="badge-color">Color</span>
+            {% else %}
+                <span class="badge-bw">B&amp;W</span>
+            {% endif %}
+            {% if order.is_double_sided %}
+                <span class="badge-sides">Double-Sided</span>
+            {% else %}
+                <span class="badge-sides">Single-Sided</span>
+            {% endif %}
+        </div>
+    </td>
+    <td>{{ order.pickup_pin }}</td>
+    <td>
+        <button class="print-btn" data-url="{% url 'print_order' order.id %}">Print</button>
+        <form method="post" action="{% url 'mark_printed' order.id %}" style="display:inline;">{% csrf_token %}<button type="submit">Mark Printed</button></form>
+    </td>
+</tr>
 {% endfor %}
+
+
 </table>
 </div>
 
