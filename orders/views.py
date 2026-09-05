@@ -15,6 +15,9 @@ from .tasks import process_pdf
 
 PRICE_PER_PAGE = 2  # ₹2 per page, adjust as needed
 
+def home(request):
+    return render(request, "orders/home.html")
+
 def health_check(request):
     return HttpResponse("OK")
 

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampusPrint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EFEDE6;
+    --ink: #1A1A1A;
+    --ribbon: #C8102E;
+    --machine: #6B6B63;
+    --ready: #2F6F4E;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Space Grotesk', sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px 64px;
+  }
+  .ticket {
+    width: 100%;
+    max-width: 420px;
+  }
+  .wordmark {
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    margin-bottom: 40px;
+  }
+  .wordmark span { color: var(--ribbon); }
+  h1 {
+    font-size: 30px;
+    line-height: 1.15;
+    font-weight: 700;
+    margin: 0 0 36px;
+  }
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .action {
+    flex: 1;
+    background: var(--ink);
+    color: var(--paper);
+    text-decoration: none;
+    border-radius: 4px;
+    padding: 22px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 108px;
+    transition: transform 0.15s ease;
+  }
+  .action:active { transform: scale(0.98); }
+  .action.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+  }
+  .action .label {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .action .arrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    align-self: flex-end;
+  }
+  .perforation {
+    border: none;
+    border-top: 2px dashed var(--machine);
+    opacity: 0.5;
+    margin: 0 0 28px;
+  }
+  .facts {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--machine);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .facts .fact {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px dotted #d4d1c6;
+    padding-bottom: 10px;
+  }
+  .facts .fact b { color: var(--ink); font-weight: 500; }
+  .sample {
+    margin-top: 40px;
+    border: 1.5px solid var(--ink);
+    border-radius: 4px;
+    padding: 16px 18px;
+    background: #fff;
+  }
+  .sample .top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--machine);
+    margin-bottom: 10px;
+  }
+  .sample .pin {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+  }
+  .sample .status {
+    display: inline-block;
+    margin-top: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--ready);
+    border: 1px solid var(--ready);
+    border-radius: 20px;
+    padding: 3px 10px;
+  }
+  @media (max-width: 380px) {
+    h1 { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="ticket">
+  <div class="wordmark">Campus<span>Print</span></div>
+
+  <h1>Skip the line.<br>Print from your phone.</h1>
+
+  <div class="actions">
+    <a class="action" href="{% url 'upload_order' %}">
+      <span class="label">Upload a file</span>
+      <span class="arrow">→</span>
+    </a>
+    <a class="action secondary" href="{% url 'browse_handouts' %}">
+      <span class="label">Browse handouts</span>
+      <span class="arrow">→</span>
+    </a>
+  </div>
+
+  <hr class="perforation">
+
+  <div class="facts">
+    <div class="fact"><span>Payment</span><b>Pay online, instantly</b></div>
+    <div class="fact"><span>Pickup</span><b>Collect with your PIN</b></div>
+    <div class="fact"><span>Privacy</span><b>Files deleted after printing</b></div>
+  </div>
+
+  <div class="sample">
+    <div class="top"><span>SAMPLE TICKET</span><span>#128</span></div>
+    <div class="pin">PIN 723298</div>
+    <span class="status">Ready for pickup</span>
+  </div>
+</div>
+</body>
+</html>
