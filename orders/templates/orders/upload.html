@@ -1,192 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Print Queue — Upload</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
-            background: #f4f5f7;
-            margin: 0;
-            padding: 40px 20px;
-            color: #1a1a1a;
-        }
-        .card {
-            max-width: 460px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 12px;
-            padding: 32px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
-        }
-        h1 {
-            font-size: 22px;
-            margin: 0 0 4px;
-        }
-        .subtitle {
-            color: #6b7280;
-            font-size: 14px;
-            margin: 0 0 28px;
-        }
-        label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: #374151;
-        }
-        .field {
-            margin-bottom: 18px;
-        }
-        input[type="email"],
-        input[type="number"],
-        input[type="file"] {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            font-size: 14px;
-            background: #fafafa;
-        }
-        input:focus {
-            outline: none;
-            border-color: #4f46e5;
-            background: #fff;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #4f46e5;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        button:hover { background: #4338ca; }
-        .error {
-            background: #fef2f2;
-            color: #b91c1c;
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 18px;
-            border: 1px solid #fecaca;
-        }
-
-        @media (max-width: 480px) {
-            body{padding:20px 12px;}
-            .card{padding:24px 18px;}
-}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upload — CampusPrint</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{--paper:#EFEDE6;--ink:#1A1A1A;--ribbon:#C8102E;--machine:#6B6B63;--ready:#2F6F4E;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Space Grotesk',sans-serif;display:flex;justify-content:center;padding:32px 16px 64px;}
+  .card{width:100%;max-width:420px;}
+  .wordmark{font-weight:700;font-size:15px;margin-bottom:28px;}
+  .wordmark span{color:var(--ribbon);}
+  h1{font-size:22px;font-weight:700;margin:0 0 6px;}
+  .subtitle{font-size:14px;color:var(--machine);margin:0 0 28px;}
+  .field{margin-bottom:20px;}
+  label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;}
+  input[type="email"],input[type="number"],select{
+    width:100%;padding:12px;border:1.5px solid var(--ink);border-radius:4px;
+    font-family:'Space Grotesk',sans-serif;font-size:15px;background:#fff;color:var(--ink);
+  }
+  input:focus,select:focus{outline:none;border-color:var(--ribbon);}
+  button[type="submit"]{
+    width:100%;padding:14px;background:var(--ink);color:var(--paper);border:none;
+    border-radius:4px;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:500;cursor:pointer;
+  }
+  button[type="submit"]:disabled{opacity:0.4;cursor:not-allowed;}
+  .error{background:#fff;border:1.5px solid var(--ribbon);color:var(--ribbon);padding:12px 14px;border-radius:4px;font-size:13px;margin-bottom:20px;}
+  .hint{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--machine);margin-top:6px;}
+  .warning{color:var(--ribbon);font-family:'IBM Plex Mono',monospace;font-size:12px;margin-top:6px;display:none;}
+  #upload-trigger{border:1.5px dashed var(--ink);border-radius:4px;padding:14px 12px;cursor:pointer;background:#fff;font-size:14px;color:var(--machine);}
+  /* Modal */
+  #source-modal,#camera-modal{display:none;position:fixed;inset:0;background:rgba(26,26,26,0.5);z-index:100;align-items:flex-end;justify-content:center;}
+  .sheet{background:var(--paper);width:100%;max-width:420px;border-radius:16px 16px 0 0;padding:24px;box-sizing:border-box;}
+  .sheet h3{margin:0 0 4px;font-size:17px;}
+  .sheet p{font-size:13px;color:var(--machine);margin:0 0 20px;}
+  .source-row{display:flex;gap:10px;}
+  .source-btn{flex:1;padding:18px 8px;border:1.5px solid var(--ink);border-radius:4px;background:#fff;cursor:pointer;font-family:'Space Grotesk',sans-serif;color:var(--ink);}
+  .source-btn span{font-size:13px;display:block;margin-top:6px;}
+  #close-modal,#add-photo-btn{width:100%;margin-top:14px;padding:12px;background:transparent;border:1.5px dashed var(--machine);border-radius:4px;color:var(--machine);font-size:14px;}
+  #finish-camera-btn{width:100%;margin-top:8px;padding:14px;background:var(--ink);color:var(--paper);border:none;border-radius:4px;font-size:15px;}
+  #camera-thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  #camera-thumbs div{width:56px;height:56px;background:#fff;border:1px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--machine);}
+</style>
 </head>
 <body>
-    <div class="card">
-        <div style="display:flex; gap:8px; margin-bottom:24px;">
-    <a href="{% url 'upload_order' %}" style="flex:1; text-align:center; padding:10px; border-radius:8px; background:#4f46e5; color:#fff; text-decoration:none; font-weight:600; font-size:14px;">Upload my file</a>
-    <a href="{% url 'browse_handouts' %}" style="flex:1; text-align:center; padding:10px; border-radius:8px; background:#f3f4f6; color:#374151; text-decoration:none; font-weight:600; font-size:14px;">Find a shop handout</a>
-</div>
-        <h1>Upload your print job</h1>
-        <!-- <p class="subtitle">PDF only, up to 50 pages. Payment happens after upload.</p> -->
-        <p class="subtitle">Payment happens after upload.</p>
+<div class="card">
+    <div class="wordmark">Campus<span>Print</span></div>
+    <h1>Upload your print job</h1>
+    <p class="subtitle">Payment happens after upload.</p>
 
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
 
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <div class="field">
-                <label>Email address</label>
-                <input type="email" name="student_email" placeholder="you@college.edu" required>
-            </div>
-            <!-- <div class="field">
-    <label>PDF file</label>
-    <input type="file" name="file" id="file-input" accept="application/pdf,.pdf" required>
-    <p style="font-size:12px; color:#6b7280; margin-top:4px;">PDF only, max 50MB, up to 150 pages. Files are deleted after printing.</p>
-    <p id="size-warning" style="color:#b91c1c; font-size:13px; margin-top:6px; display:none;"></p>
-</div> -->
-
-
-<div class="field">
-    <label>PDF file</label>
-    <div id="upload-trigger" style="border:1px solid #d1d5db; border-radius:8px; padding:10px 12px; cursor:pointer; background:#fafafa; font-size:14px; color:#6b7280;">
-        Tap to choose a file
-    </div>
-    <input type="file" name="file" id="file-input" accept="application/pdf,.pdf" required style="display:none;">
-    <div id="photo-list" style="margin-top:8px; font-size:13px; color:#374151;"></div>
-    <p style="font-size:12px; color:#6b7280; margin-top:4px;">PDF only, max 50MB total, up to 150 pages. Files are deleted after printing.</p>
-    <p id="size-warning" style="color:#b91c1c; font-size:13px; margin-top:6px; display:none;"></p>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="field">
+            <label>Email address</label>
+            <input type="email" name="student_email" placeholder="you@college.edu" required>
+        </div>
+        <div class="field">
+            <label>PDF file</label>
+            <div id="upload-trigger">Tap to choose a file</div>
+            <input type="file" name="file" id="file-input" accept="application/pdf,.pdf" required style="display:none;">
+            <p class="hint">PDF only, max 50MB, up to 150 pages. Files are deleted after printing.</p>
+            <p id="size-warning" class="warning"></p>
+        </div>
+        <div class="field">
+            <label>Number of copies</label>
+            <input type="number" name="copies" value="1" min="1" required>
+        </div>
+        <div class="field">
+            <label>Color mode</label>
+            <select name="is_color">
+                <option value="false" selected>Black &amp; White</option>
+                <option value="true">Full Color</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Print sides</label>
+            <select name="is_double_sided">
+                <option value="true" selected>Double-Sided</option>
+                <option value="false">Single-Sided</option>
+            </select>
+        </div>
+        <button type="submit" id="submit-btn">Continue to payment</button>
+    </form>
 </div>
 
 <input type="file" id="picker-files" accept="application/pdf,.pdf" style="display:none;">
 <input type="file" id="picker-gallery" accept="image/*" multiple style="display:none;">
 <input type="file" id="picker-camera" accept="image/*" capture="environment" style="display:none;">
 
-<div id="source-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:flex-end; justify-content:center;">
-    <div style="background:#fff; width:100%; max-width:420px; border-radius:16px 16px 0 0; padding:24px; box-sizing:border-box;">
-        <h3 style="margin:0 0 4px; font-size:17px;">Select a source</h3>
-        <p style="font-size:13px; color:#6b7280; margin:0 0 20px;">PDF, or photos (combined into one PDF automatically).</p>
-        <div style="display:flex; gap:10px;">
-            <button type="button" class="source-btn" data-target="picker-files" style="flex:1; padding:16px 8px; border:1px solid #eee; border-radius:10px; background:#fff; cursor:pointer;">📄<br><span style="font-size:13px;">Files</span></button>
-            <button type="button" class="source-btn" data-target="picker-gallery" style="flex:1; padding:16px 8px; border:1px solid #eee; border-radius:10px; background:#fff; cursor:pointer;">🖼️<br><span style="font-size:13px;">Gallery</span></button>
-            <button type="button" id="camera-btn" style="flex:1; padding:16px 8px; border:1px solid #eee; border-radius:10px; background:#fff; cursor:pointer;">📷<br><span style="font-size:13px;">Camera</span></button>
+<div id="source-modal">
+    <div class="sheet">
+        <h3>Select a source</h3>
+        <p>PDF, or photos (combined into one PDF automatically).</p>
+        <div class="source-row">
+            <button type="button" class="source-btn" data-target="picker-files">📄<span>Files</span></button>
+            <button type="button" class="source-btn" data-target="picker-gallery">🖼️<span>Gallery</span></button>
+            <button type="button" id="camera-btn" class="source-btn">📷<span>Camera</span></button>
         </div>
-        <button type="button" id="close-modal" style="width:100%; margin-top:16px; padding:10px; background:none; border:none; color:#6b7280; font-size:14px;">Cancel</button>
+        <button type="button" id="close-modal">Cancel</button>
     </div>
 </div>
 
-<div id="camera-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:flex-end; justify-content:center;">
-    <div style="background:#fff; width:100%; max-width:420px; border-radius:16px 16px 0 0; padding:24px; box-sizing:border-box;">
-        <h3 style="margin:0 0 4px; font-size:17px;">Camera photos (<span id="camera-count">0</span>)</h3>
-        <p style="font-size:13px; color:#6b7280; margin:0 0 12px;">Take as many shots as you need, then finish.</p>
-        <div id="camera-thumbs" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;"></div>
-        <button type="button" id="add-photo-btn" style="width:100%; padding:12px; background:#f3f4f6; border:none; border-radius:8px; margin-bottom:8px;">+ Add photo</button>
-        <button type="button" id="finish-camera-btn" style="width:100%; padding:12px; background:#4f46e5; color:#fff; border:none; border-radius:8px;">Done — Use these photos</button>
+<div id="camera-modal">
+    <div class="sheet">
+        <h3>Camera photos (<span id="camera-count">0</span>)</h3>
+        <p>Take as many shots as you need, then finish.</p>
+        <div id="camera-thumbs"></div>
+        <button type="button" id="add-photo-btn">+ Add photo</button>
+        <button type="button" id="finish-camera-btn">Done — Use these photos</button>
     </div>
 </div>
-
-<div class="field">
-    <label>Number of copies</label>
-    <input type="number" name="copies" value="1" min="1" required>
-</div>
-<div class="field">
-    <label>Color mode</label>
-    <select name="is_color">
-        <option value="false" selected>Black &amp; White</option>
-        <option value="true">Full Color</option>
-    </select>
-</div>
-<div class="field">
-    <label>Print sides</label>
-    <select name="is_double_sided">
-        <option value="true" selected>Double-Sided</option>
-        <option value="false">Single-Sided</option>
-    </select>
-</div>
-<button type="submit" id="submit-btn">Continue to payment</button>
-        </form>
-    </div>
-    <script>
-document.getElementById("file-input").addEventListener("change", function() {
-    const file = this.files[0];
-    const warning = document.getElementById("size-warning");
-    const submitBtn = document.getElementById("submit-btn");
-    if (file && file.size > 50 * 1024 * 1024) {
-        warning.textContent = "This file is over 50MB — please choose a smaller PDF.";
-        warning.style.display = "block";
-        submitBtn.disabled = true;
-    } else {
-        warning.style.display = "none";
-        submitBtn.disabled = false;
-    }
-});
-</script>
-
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
@@ -201,17 +127,16 @@ document.getElementById("close-modal").addEventListener("click", () => { modal.s
 
 document.querySelectorAll(".source-btn").forEach(btn => {
     btn.addEventListener("click", () => {
+        if (btn.id === "camera-btn") return;
         modal.style.display = "none";
         document.getElementById(btn.dataset.target).click();
     });
 });
 
-// Files: single PDF, pass straight through.
 document.getElementById("picker-files").addEventListener("change", function () {
     if (this.files[0]) finalizeFile(this.files[0], this.files[0].name);
 });
 
-// Gallery: multiple images selected at once — combine into one PDF.
 document.getElementById("picker-gallery").addEventListener("change", async function () {
     if (!this.files.length) return;
     trigger.textContent = `Converting ${this.files.length} photo(s) to PDF...`;
@@ -220,7 +145,6 @@ document.getElementById("picker-gallery").addEventListener("change", async funct
     finalizeFile(new File([pdfBlob], "photos.pdf", { type: "application/pdf" }), `${this.files.length} photo(s) → PDF`);
 });
 
-// Camera: accumulate shots one at a time via repeated modal use.
 document.getElementById("camera-btn").addEventListener("click", () => {
     modal.style.display = "none";
     cameraShots = [];
@@ -231,18 +155,13 @@ document.getElementById("add-photo-btn").addEventListener("click", () => {
     document.getElementById("picker-camera").click();
 });
 document.getElementById("picker-camera").addEventListener("change", function () {
-    if (this.files[0]) {
-        cameraShots.push(this.files[0]);
-        renderCameraThumbs();
-    }
+    if (this.files[0]) { cameraShots.push(this.files[0]); renderCameraThumbs(); }
     this.value = "";
 });
 function renderCameraThumbs() {
     document.getElementById("camera-count").textContent = cameraShots.length;
-    const thumbs = document.getElementById("camera-thumbs");
-    thumbs.innerHTML = cameraShots.map((f, i) =>
-        `<div style="width:56px;height:56px;background:#f3f4f6;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;">Photo ${i + 1}</div>`
-    ).join("");
+    document.getElementById("camera-thumbs").innerHTML = cameraShots.map((f, i) =>
+        `<div>Photo ${i + 1}</div>`).join("");
 }
 document.getElementById("finish-camera-btn").addEventListener("click", async () => {
     if (!cameraShots.length) { cameraModal.style.display = "none"; return; }
@@ -254,10 +173,8 @@ document.getElementById("finish-camera-btn").addEventListener("click", async () 
 
 async function imagesToPdf(files) {
     const { jsPDF } = window.jspdf;
-    const A4_WIDTH = 595.28;   // A4 in points (72 dpi basis)
-    const A4_HEIGHT = 841.89;
+    const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
     let pdf = null;
-
     for (const file of files) {
         const dataUrl = await new Promise((resolve) => {
             const reader = new FileReader();
@@ -269,27 +186,14 @@ async function imagesToPdf(files) {
             i.onload = () => resolve(i);
             i.src = dataUrl;
         });
-
-        // Fit the image within A4 bounds, preserving aspect ratio, centered.
-        const imgRatio = img.width / img.height;
-        const pageRatio = A4_WIDTH / A4_HEIGHT;
+        const imgRatio = img.width / img.height, pageRatio = A4_WIDTH / A4_HEIGHT;
         let drawWidth, drawHeight;
-        if (imgRatio > pageRatio) {
-            drawWidth = A4_WIDTH;
-            drawHeight = A4_WIDTH / imgRatio;
-        } else {
-            drawHeight = A4_HEIGHT;
-            drawWidth = A4_HEIGHT * imgRatio;
-        }
-        const x = (A4_WIDTH - drawWidth) / 2;
-        const y = (A4_HEIGHT - drawHeight) / 2;
-
-        if (!pdf) {
-            pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
-        } else {
-            pdf.addPage("a4", "p");
-        }
-        pdf.addImage(dataUrl, "JPEG", x, y, drawWidth, drawHeight, undefined, "FAST");
+        if (imgRatio > pageRatio) { drawWidth = A4_WIDTH; drawHeight = A4_WIDTH / imgRatio; }
+        else { drawHeight = A4_HEIGHT; drawWidth = A4_HEIGHT * imgRatio; }
+        const x = (A4_WIDTH - drawWidth) / 2, y = (A4_HEIGHT - drawHeight) / 2;
+        if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+        else pdf.addPage("a4", "p");
+        pdf.addImage(dataUrl, "JPEG", x, y, drawWidth, drawHeight);
     }
     return pdf.output("blob");
 }
@@ -299,7 +203,6 @@ function finalizeFile(file, label) {
     dt.items.add(file);
     realInput.files = dt.files;
     trigger.textContent = label;
-
     const warning = document.getElementById("size-warning");
     const submitBtn = document.getElementById("submit-btn");
     if (file.size > 50 * 1024 * 1024) {
@@ -312,7 +215,5 @@ function finalizeFile(file, label) {
     }
 }
 </script>
-
-
 </body>
 </html>
