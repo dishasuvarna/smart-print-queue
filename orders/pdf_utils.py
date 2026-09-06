@@ -1,12 +1,10 @@
 import io
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
 
 
-def stamp_order_banner(source_file, order_id, pickup_pin, title=None):
-    source_file.seek(0)
-    reader = PdfReader(source_file)
+def stamp_order_banner(file_bytes, order_id, pickup_pin, title=None):
+    reader = PdfReader(io.BytesIO(file_bytes))
     writer = PdfWriter()
 
     first_page = reader.pages[0]
@@ -16,16 +14,11 @@ def stamp_order_banner(source_file, order_id, pickup_pin, title=None):
     banner_buffer = io.BytesIO()
     c = canvas.Canvas(banner_buffer, pagesize=(page_width, page_height))
 
-    # White background strip so the banner is always readable, regardless
-    # of what's underneath — a light photo, a dark photo, doesn't matter.
     banner_height = 26
     c.setFillColorRGB(1, 1, 1)
     c.rect(0, page_height - banner_height, page_width, banner_height, fill=1, stroke=0)
 
-    if title:
-        banner_text = f"{title} | Order #{order_id} | Pickup PIN: {pickup_pin}"
-    else:
-        banner_text = f"Order #{order_id} | Pickup PIN: {pickup_pin}"
+    banner_text = f"{title} | Order #{order_id} | Pickup PIN: {pickup_pin}" if title else f"Order #{order_id} | Pickup PIN: {pickup_pin}"
     c.setFillColorRGB(0, 0, 0)
     c.setFont("Helvetica-Bold", 12)
     c.drawString(20, page_height - 20, banner_text)

@@ -240,48 +240,31 @@ def print_order(request, order_id):
     from .pdf_utils import stamp_order_banner
     order = Order.objects.get(id=order_id)
     source = order.handout.file if order.handout else order.file
-    stamped = stamp_order_banner(source, order.id, order.pickup_pin)
+    with source.open("rb") as f:
+        file_bytes = f.read()
+    stamped = stamp_order_banner(file_bytes, order.id, order.pickup_pin)
     return FileResponse(stamped, content_type="application/pdf")
 
-# @login_required
-# @user_passes_test(is_authorized_vendor)
-# def print_batch(request, handout_id):
-#     from .pdf_utils import stamp_order_banner
-#     from .models import Handout
-#     from pypdf import PdfWriter
-
-#     handout = Handout.objects.get(id=handout_id)
-#     orders = Order.objects.filter(handout_id=handout_id, status="PAID", printed_at__isnull=True)
-
-#     combined = PdfWriter()
-#     for order in orders:
-#         stamped = stamp_order_banner(handout.file, order.id, order.pickup_pin, title=handout.title)
-#         from pypdf import PdfReader
-#         stamped_reader = PdfReader(stamped)
-#         for page in stamped_reader.pages:
-#             combined.add_page(page)
-
-#     output = io.BytesIO()
-#     combined.write(output)
-#     output.seek(0)
-#     return FileResponse(output, content_type="application/pdf")
 
 @login_required
 @user_passes_test(is_authorized_vendor)
 def print_batch(request):
+    from .pdf_utils import stamp_order_banner
+    from pypdf import PdfWriter, PdfReader
+    import io
+
     order_ids = request.GET.get("orders", "").split(",")
     orders = Order.objects.filter(id__in=order_ids, status="PAID", printed_at__isnull=True)
     if not orders:
         return HttpResponse("No orders found", status=404)
 
     handout = orders.first().handout
-    from .pdf_utils import stamp_order_banner
-    from pypdf import PdfWriter, PdfReader
-    import io
+    with handout.file.open("rb") as f:
+        file_bytes = f.read()
 
     combined = PdfWriter()
     for order in orders:
-        stamped = stamp_order_banner(handout.file, order.id, order.pickup_pin, title=handout.title)
+        stamped = stamp_order_banner(file_bytes, order.id, order.pickup_pin, title=handout.title)
         for _ in range(order.copies):
             stamped.seek(0)
             stamped_reader = PdfReader(stamped)

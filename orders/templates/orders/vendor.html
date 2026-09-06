@@ -27,6 +27,15 @@ button{padding:6px 14px;background:#4f46e5;color:#fff;border:none;border-radius:
 }
 </style></head>
 <body>
+
+<div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+    <form method="post" action="/admin/logout/">
+        {% csrf_token %}
+        <button type="submit" style="background:none; border:1px solid #6B6B63; color:#6B6B63; padding:6px 14px; border-radius:4px; font-size:13px;">Log out</button>
+    </form>
+</div>
+
+
 <!-- <div id="handout-badge" style="display:none; background:#dc2626; color:#fff; padding:6px 14px; border-radius:20px; display:inline-block; font-weight:600; font-size:14px;">
     Handouts Pending: <span id="handout-count">0</span>
 </div> -->
