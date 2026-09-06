@@ -8,6 +8,13 @@ def stamp_order_banner(file_bytes, order_id, pickup_pin, title=None):
     writer = PdfWriter()
 
     first_page = reader.pages[0]
+
+    # Bake any page rotation into the actual content first — otherwise a
+    # rotated source PDF (common from scans or phone exports) causes the
+    # banner overlay to misalign with the visible content.
+    if first_page.get("/Rotate", 0):
+        first_page.transfer_rotation_to_content()
+
     page_width = float(first_page.mediabox.width)
     page_height = float(first_page.mediabox.height)
 
@@ -30,6 +37,8 @@ def stamp_order_banner(file_bytes, order_id, pickup_pin, title=None):
     writer.add_page(first_page)
 
     for page in reader.pages[1:]:
+        if page.get("/Rotate", 0):
+            page.transfer_rotation_to_content()
         writer.add_page(page)
 
     output = io.BytesIO()
