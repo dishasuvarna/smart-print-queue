@@ -174,6 +174,8 @@ document.getElementById("finish-camera-btn").addEventListener("click", async () 
 async function imagesToPdf(files) {
     const { jsPDF } = window.jspdf;
     const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
+    const BANNER_SPACE = 30; // keep photo content clear of where the banner will print
+    const usableHeight = A4_HEIGHT - BANNER_SPACE;
     let pdf = null;
     for (const file of files) {
         const dataUrl = await new Promise((resolve) => {
@@ -186,11 +188,18 @@ async function imagesToPdf(files) {
             i.onload = () => resolve(i);
             i.src = dataUrl;
         });
-        const imgRatio = img.width / img.height, pageRatio = A4_WIDTH / A4_HEIGHT;
+        const imgRatio = img.width / img.height;
+        const pageRatio = A4_WIDTH / usableHeight;
         let drawWidth, drawHeight;
-        if (imgRatio > pageRatio) { drawWidth = A4_WIDTH; drawHeight = A4_WIDTH / imgRatio; }
-        else { drawHeight = A4_HEIGHT; drawWidth = A4_HEIGHT * imgRatio; }
-        const x = (A4_WIDTH - drawWidth) / 2, y = (A4_HEIGHT - drawHeight) / 2;
+        if (imgRatio > pageRatio) {
+            drawWidth = A4_WIDTH;
+            drawHeight = A4_WIDTH / imgRatio;
+        } else {
+            drawHeight = usableHeight;
+            drawWidth = usableHeight * imgRatio;
+        }
+        const x = (A4_WIDTH - drawWidth) / 2;
+        const y = BANNER_SPACE + (usableHeight - drawHeight) / 2;
         if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
         else pdf.addPage("a4", "p");
         pdf.addImage(dataUrl, "JPEG", x, y, drawWidth, drawHeight);
