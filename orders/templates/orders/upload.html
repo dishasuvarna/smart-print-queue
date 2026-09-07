@@ -171,33 +171,72 @@ document.getElementById("finish-camera-btn").addEventListener("click", async () 
     finalizeFile(new File([pdfBlob], "camera-photos.pdf", { type: "application/pdf" }), `${cameraShots.length} photo(s) → PDF`);
 });
 
+// async function imagesToPdf(files) {
+//     const { jsPDF } = window.jspdf;
+//     const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
+//     const BANNER_SPACE = 30; // keep photo content clear of where the banner will print
+//     const usableHeight = A4_HEIGHT - BANNER_SPACE;
+//     let pdf = null;
+//     for (const file of files) {
+//         const dataUrl = await new Promise((resolve) => {
+//             const reader = new FileReader();
+//             reader.onload = () => resolve(reader.result);
+//             reader.readAsDataURL(file);
+//         });
+//         const img = await new Promise((resolve) => {
+//             const i = new Image();
+//             i.onload = () => resolve(i);
+//             i.src = dataUrl;
+//         });
+//         const imgRatio = img.width / img.height;
+//         const pageRatio = A4_WIDTH / usableHeight;
+//         let drawWidth, drawHeight;
+//         if (imgRatio > pageRatio) {
+//             drawWidth = A4_WIDTH;
+//             drawHeight = A4_WIDTH / imgRatio;
+//         } else {
+//             drawHeight = usableHeight;
+//             drawWidth = usableHeight * imgRatio;
+//         }
+//         const x = (A4_WIDTH - drawWidth) / 2;
+//         const y = BANNER_SPACE + (usableHeight - drawHeight) / 2;
+//         if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+//         else pdf.addPage("a4", "p");
+//         pdf.addImage(dataUrl, "JPEG", x, y, drawWidth, drawHeight);
+//     }
+//     return pdf.output("blob");
+// }
+
+async function loadCorrectedImage(file) {
+    let bitmap;
+    try {
+        bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch (e) {
+        bitmap = await createImageBitmap(file);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext("2d").drawImage(bitmap, 0, 0);
+    return {
+        dataUrl: canvas.toDataURL("image/jpeg", 0.92),
+        width: bitmap.width,
+        height: bitmap.height,
+    };
+}
+
 async function imagesToPdf(files) {
     const { jsPDF } = window.jspdf;
     const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
-    const BANNER_SPACE = 30; // keep photo content clear of where the banner will print
+    const BANNER_SPACE = 30;
     const usableHeight = A4_HEIGHT - BANNER_SPACE;
     let pdf = null;
     for (const file of files) {
-        const dataUrl = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(file);
-        });
-        const img = await new Promise((resolve) => {
-            const i = new Image();
-            i.onload = () => resolve(i);
-            i.src = dataUrl;
-        });
-        const imgRatio = img.width / img.height;
-        const pageRatio = A4_WIDTH / usableHeight;
+        const { dataUrl, width, height } = await loadCorrectedImage(file);
+        const imgRatio = width / height, pageRatio = A4_WIDTH / usableHeight;
         let drawWidth, drawHeight;
-        if (imgRatio > pageRatio) {
-            drawWidth = A4_WIDTH;
-            drawHeight = A4_WIDTH / imgRatio;
-        } else {
-            drawHeight = usableHeight;
-            drawWidth = usableHeight * imgRatio;
-        }
+        if (imgRatio > pageRatio) { drawWidth = A4_WIDTH; drawHeight = A4_WIDTH / imgRatio; }
+        else { drawHeight = usableHeight; drawWidth = usableHeight * imgRatio; }
         const x = (A4_WIDTH - drawWidth) / 2;
         const y = BANNER_SPACE + (usableHeight - drawHeight) / 2;
         if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
