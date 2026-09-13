@@ -171,173 +171,173 @@ document.getElementById("finish-camera-btn").addEventListener("click", async () 
     finalizeFile(new File([pdfBlob], "camera-photos.pdf", { type: "application/pdf" }), `${cameraShots.length} photo(s) → PDF`);
 });
 
-async function imagesToPdf(files) {
-    const { jsPDF } = window.jspdf;
-    const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
-    const BANNER_SPACE = 30; // keep photo content clear of where the banner will print
-    const usableHeight = A4_HEIGHT - BANNER_SPACE;
-    let pdf = null;
-    for (const file of files) {
-        const dataUrl = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.readAsDataURL(file);
-        });
-        const img = await new Promise((resolve) => {
-            const i = new Image();
-            i.onload = () => resolve(i);
-            i.src = dataUrl;
-        });
-        const imgRatio = img.width / img.height;
-        const pageRatio = A4_WIDTH / usableHeight;
-        let drawWidth, drawHeight;
-        if (imgRatio > pageRatio) {
-            drawWidth = A4_WIDTH;
-            drawHeight = A4_WIDTH / imgRatio;
-        } else {
-            drawHeight = usableHeight;
-            drawWidth = usableHeight * imgRatio;
-        }
-        const x = (A4_WIDTH - drawWidth) / 2;
-        const y = BANNER_SPACE + (usableHeight - drawHeight) / 2;
-        if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
-        else pdf.addPage("a4", "p");
-        pdf.addImage(dataUrl, "JPEG", x, y, drawWidth, drawHeight);
-    }
-    return pdf.output("blob");
-}
-
 // async function imagesToPdf(files) {
 //     const { jsPDF } = window.jspdf;
 //     const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
-    
-//     // Massive safe zones to beat the printer grippers and browser zoom
-//     const MARGIN = 40; 
-//     const BANNER_SPACE = 40; 
-    
-//     const usableWidth = A4_WIDTH - (MARGIN * 2);
-//     const usableHeight = A4_HEIGHT - BANNER_SPACE - MARGIN;
-    
+//     const BANNER_SPACE = 30; // keep photo content clear of where the banner will print
+//     const usableHeight = A4_HEIGHT - BANNER_SPACE;
 //     let pdf = null;
-    
 //     for (const file of files) {
-//         // Use your existing loadCorrectedImage function to fix mobile rotation!
-//         const corrected = await loadCorrectedImage(file);
-        
-//         const imgRatio = corrected.width / corrected.height;
-//         const pageRatio = usableWidth / usableHeight;
-        
+//         const dataUrl = await new Promise((resolve) => {
+//             const reader = new FileReader();
+//             reader.onload = () => resolve(reader.result);
+//             reader.readAsDataURL(file);
+//         });
+//         const img = await new Promise((resolve) => {
+//             const i = new Image();
+//             i.onload = () => resolve(i);
+//             i.src = dataUrl;
+//         });
+//         const imgRatio = img.width / img.height;
+//         const pageRatio = A4_WIDTH / usableHeight;
 //         let drawWidth, drawHeight;
-        
-//         // Scale strictly against the usable safe zone, NOT the full A4 page
 //         if (imgRatio > pageRatio) {
-//             drawWidth = usableWidth;
-//             drawHeight = usableWidth / imgRatio;
+//             drawWidth = A4_WIDTH;
+//             drawHeight = A4_WIDTH / imgRatio;
 //         } else {
 //             drawHeight = usableHeight;
 //             drawWidth = usableHeight * imgRatio;
 //         }
-        
-//         // Center the image perfectly inside the safe margins
-//         const x = MARGIN + (usableWidth - drawWidth) / 2;
+//         const x = (A4_WIDTH - drawWidth) / 2;
 //         const y = BANNER_SPACE + (usableHeight - drawHeight) / 2;
-        
 //         if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
 //         else pdf.addPage("a4", "p");
-        
-//         pdf.addImage(corrected.dataUrl, "JPEG", x, y, drawWidth, drawHeight);
+//         pdf.addImage(dataUrl, "JPEG", x, y, drawWidth, drawHeight);
 //     }
-    
 //     return pdf.output("blob");
 // }
 
-// function finalizeFile(file, label) {
-//     const dt = new DataTransfer();
-//     dt.items.add(file);
-//     realInput.files = dt.files;
-//     trigger.textContent = label;
-//     const warning = document.getElementById("size-warning");
-//     const submitBtn = document.getElementById("submit-btn");
-//     if (file.size > 50 * 1024 * 1024) {
-//         warning.textContent = "Combined file is over 50MB — please use fewer or smaller photos.";
-//         warning.style.display = "block";
-//         submitBtn.disabled = true;
-//     } else {
-//         warning.style.display = "none";
-//         submitBtn.disabled = false;
-//     }
-// }
+async function imagesToPdf(files) {
+    const { jsPDF } = window.jspdf;
+    const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
+    
+    // Massive safe zones to beat the printer grippers and browser zoom
+    const MARGIN = 40; 
+    const BANNER_SPACE = 40; 
+    
+    const usableWidth = A4_WIDTH - (MARGIN * 2);
+    const usableHeight = A4_HEIGHT - BANNER_SPACE - MARGIN;
+    
+    let pdf = null;
+    
+    for (const file of files) {
+        // Use your existing loadCorrectedImage function to fix mobile rotation!
+        const corrected = await loadCorrectedImage(file);
+        
+        const imgRatio = corrected.width / corrected.height;
+        const pageRatio = usableWidth / usableHeight;
+        
+        let drawWidth, drawHeight;
+        
+        // Scale strictly against the usable safe zone, NOT the full A4 page
+        if (imgRatio > pageRatio) {
+            drawWidth = usableWidth;
+            drawHeight = usableWidth / imgRatio;
+        } else {
+            drawHeight = usableHeight;
+            drawWidth = usableHeight * imgRatio;
+        }
+        
+        // Center the image perfectly inside the safe margins
+        const x = MARGIN + (usableWidth - drawWidth) / 2;
+        const y = BANNER_SPACE + (usableHeight - drawHeight) / 2;
+        
+        if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
+        else pdf.addPage("a4", "p");
+        
+        pdf.addImage(corrected.dataUrl, "JPEG", x, y, drawWidth, drawHeight);
+    }
+    
+    return pdf.output("blob");
+}
 
-// function getExifOrientation(file) {
-//     return new Promise((resolve) => {
-//         const reader = new FileReader();
-//         reader.onload = function (e) {
-//             const view = new DataView(e.target.result);
-//             if (view.getUint16(0, false) !== 0xFFD8) return resolve(1);
-//             let offset = 2;
-//             while (offset < view.byteLength) {
-//                 const marker = view.getUint16(offset, false);
-//                 offset += 2;
-//                 if (marker === 0xFFE1) {
-//                     if (view.getUint32(offset + 2, false) !== 0x45786966) return resolve(1);
-//                     const little = view.getUint16(offset + 8, false) === 0x4949;
-//                     const tagsOffset = offset + 8 + view.getUint32(offset + 8 + 4, little);
-//                     const tags = view.getUint16(tagsOffset, little);
-//                     for (let i = 0; i < tags; i++) {
-//                         const entryOffset = tagsOffset + 2 + i * 12;
-//                         if (view.getUint16(entryOffset, little) === 0x0112) {
-//                             return resolve(view.getUint16(entryOffset + 8, little));
-//                         }
-//                     }
-//                 } else if ((marker & 0xFF00) !== 0xFF00) {
-//                     break;
-//                 } else {
-//                     offset += view.getUint16(offset, false);
-//                 }
-//             }
-//             resolve(1);
-//         };
-//         reader.readAsArrayBuffer(file.slice(0, 128 * 1024));
-//     });
-// }
+function finalizeFile(file, label) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    realInput.files = dt.files;
+    trigger.textContent = label;
+    const warning = document.getElementById("size-warning");
+    const submitBtn = document.getElementById("submit-btn");
+    if (file.size > 50 * 1024 * 1024) {
+        warning.textContent = "Combined file is over 50MB — please use fewer or smaller photos.";
+        warning.style.display = "block";
+        submitBtn.disabled = true;
+    } else {
+        warning.style.display = "none";
+        submitBtn.disabled = false;
+    }
+}
 
-// async function loadCorrectedImage(file) {
-//     const orientation = await getExifOrientation(file);
-//     const dataUrl = await new Promise((resolve) => {
-//         const reader = new FileReader();
-//         reader.onload = () => resolve(reader.result);
-//         reader.readAsDataURL(file);
-//     });
-//     const img = await new Promise((resolve) => {
-//         const i = new Image();
-//         i.onload = () => resolve(i);
-//         i.src = dataUrl;
-//     });
+function getExifOrientation(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const view = new DataView(e.target.result);
+            if (view.getUint16(0, false) !== 0xFFD8) return resolve(1);
+            let offset = 2;
+            while (offset < view.byteLength) {
+                const marker = view.getUint16(offset, false);
+                offset += 2;
+                if (marker === 0xFFE1) {
+                    if (view.getUint32(offset + 2, false) !== 0x45786966) return resolve(1);
+                    const little = view.getUint16(offset + 8, false) === 0x4949;
+                    const tagsOffset = offset + 8 + view.getUint32(offset + 8 + 4, little);
+                    const tags = view.getUint16(tagsOffset, little);
+                    for (let i = 0; i < tags; i++) {
+                        const entryOffset = tagsOffset + 2 + i * 12;
+                        if (view.getUint16(entryOffset, little) === 0x0112) {
+                            return resolve(view.getUint16(entryOffset + 8, little));
+                        }
+                    }
+                } else if ((marker & 0xFF00) !== 0xFF00) {
+                    break;
+                } else {
+                    offset += view.getUint16(offset, false);
+                }
+            }
+            resolve(1);
+        };
+        reader.readAsArrayBuffer(file.slice(0, 128 * 1024));
+    });
+}
 
-//     const canvas = document.createElement("canvas");
-//     const ctx = canvas.getContext("2d");
-//     const swap = orientation >= 5 && orientation <= 8;
-//     canvas.width = swap ? img.height : img.width;
-//     canvas.height = swap ? img.width : img.height;
+async function loadCorrectedImage(file) {
+    const orientation = await getExifOrientation(file);
+    const dataUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+    });
+    const img = await new Promise((resolve) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.src = dataUrl;
+    });
 
-//     switch (orientation) {
-//         case 2: ctx.transform(-1, 0, 0, 1, img.width, 0); break;
-//         case 3: ctx.transform(-1, 0, 0, -1, img.width, img.height); break;
-//         case 4: ctx.transform(1, 0, 0, -1, 0, img.height); break;
-//         case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
-//         case 6: ctx.transform(0, 1, -1, 0, img.height, 0); break;
-//         case 7: ctx.transform(0, -1, -1, 0, img.height, img.width); break;
-//         case 8: ctx.transform(0, -1, 1, 0, 0, img.width); break;
-//         default: break;
-//     }
-//     ctx.drawImage(img, 0, 0);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const swap = orientation >= 5 && orientation <= 8;
+    canvas.width = swap ? img.height : img.width;
+    canvas.height = swap ? img.width : img.height;
 
-//     return {
-//         dataUrl: canvas.toDataURL("image/jpeg", 0.92),
-//         width: canvas.width,
-//         height: canvas.height,
-//     };
-// }
+    switch (orientation) {
+        case 2: ctx.transform(-1, 0, 0, 1, img.width, 0); break;
+        case 3: ctx.transform(-1, 0, 0, -1, img.width, img.height); break;
+        case 4: ctx.transform(1, 0, 0, -1, 0, img.height); break;
+        case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+        case 6: ctx.transform(0, 1, -1, 0, img.height, 0); break;
+        case 7: ctx.transform(0, -1, -1, 0, img.height, img.width); break;
+        case 8: ctx.transform(0, -1, 1, 0, 0, img.width); break;
+        default: break;
+    }
+    ctx.drawImage(img, 0, 0);
+
+    return {
+        dataUrl: canvas.toDataURL("image/jpeg", 0.92),
+        width: canvas.width,
+        height: canvas.height,
+    };
+}
 </script>
 </body>
 </html>
