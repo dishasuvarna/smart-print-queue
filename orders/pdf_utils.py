@@ -46,19 +46,19 @@ def stamp_order_banner(file_bytes, order_id, pickup_pin, title=None):
     page_width = float(first_page.mediabox.width)
     page_height = float(first_page.mediabox.height)
 
-    # Bruteforce shrink the entire PDF to 85% of its size
+    # Hard-shrink the PDF page to leave a safe border around all sides
     scale_factor = 0.85
     new_width = page_width * scale_factor
     new_height = page_height * scale_factor
     
-    # Center horizontally, push down 40 points vertically
     x_offset = (page_width - new_width) / 2
     y_offset = (page_height - new_height) / 2 - 20 
 
+    # Scale the content inward away from printer dead-zones
     op = Transformation().scale(scale_factor, scale_factor).translate(x_offset, y_offset)
     first_page.add_transformation(op)
 
-    # Draw the white banner at the very top
+    # Draw the white banner at the top
     banner_buffer = io.BytesIO()
     c = canvas.Canvas(banner_buffer, pagesize=(page_width, page_height))
     banner_height = 30
