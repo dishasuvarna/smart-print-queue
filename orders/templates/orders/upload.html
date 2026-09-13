@@ -224,6 +224,77 @@ function finalizeFile(file, label) {
         submitBtn.disabled = false;
     }
 }
+
+function getExifOrientation(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const view = new DataView(e.target.result);
+            if (view.getUint16(0, false) !== 0xFFD8) return resolve(1);
+            let offset = 2;
+            while (offset < view.byteLength) {
+                const marker = view.getUint16(offset, false);
+                offset += 2;
+                if (marker === 0xFFE1) {
+                    if (view.getUint32(offset + 2, false) !== 0x45786966) return resolve(1);
+                    const little = view.getUint16(offset + 8, false) === 0x4949;
+                    const tagsOffset = offset + 8 + view.getUint32(offset + 8 + 4, little);
+                    const tags = view.getUint16(tagsOffset, little);
+                    for (let i = 0; i < tags; i++) {
+                        const entryOffset = tagsOffset + 2 + i * 12;
+                        if (view.getUint16(entryOffset, little) === 0x0112) {
+                            return resolve(view.getUint16(entryOffset + 8, little));
+                        }
+                    }
+                } else if ((marker & 0xFF00) !== 0xFF00) {
+                    break;
+                } else {
+                    offset += view.getUint16(offset, false);
+                }
+            }
+            resolve(1);
+        };
+        reader.readAsArrayBuffer(file.slice(0, 128 * 1024));
+    });
+}
+
+async function loadCorrectedImage(file) {
+    const orientation = await getExifOrientation(file);
+    const dataUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+    });
+    const img = await new Promise((resolve) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.src = dataUrl;
+    });
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const swap = orientation >= 5 && orientation <= 8;
+    canvas.width = swap ? img.height : img.width;
+    canvas.height = swap ? img.width : img.height;
+
+    switch (orientation) {
+        case 2: ctx.transform(-1, 0, 0, 1, img.width, 0); break;
+        case 3: ctx.transform(-1, 0, 0, -1, img.width, img.height); break;
+        case 4: ctx.transform(1, 0, 0, -1, 0, img.height); break;
+        case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+        case 6: ctx.transform(0, 1, -1, 0, img.height, 0); break;
+        case 7: ctx.transform(0, -1, -1, 0, img.height, img.width); break;
+        case 8: ctx.transform(0, -1, 1, 0, 0, img.width); break;
+        default: break;
+    }
+    ctx.drawImage(img, 0, 0);
+
+    return {
+        dataUrl: canvas.toDataURL("image/jpeg", 0.92),
+        width: canvas.width,
+        height: canvas.height,
+    };
+}
 </script>
 </body>
 </html>
