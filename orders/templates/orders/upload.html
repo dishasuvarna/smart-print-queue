@@ -92,9 +92,24 @@
 <input type="file" id="picker-camera" accept="image/*" capture="environment" style="display:none;">
 
 <div id="source-modal">
-    <div class="sheet">
+    <!-- <div class="sheet">
     <h3>Select a source</h3>
     <p><b>Already have a PDF?</b> Choose Files.<br><b>Have photos of your notes?</b> Choose Gallery or Camera — they'll be combined into one PDF automatically.</p>
+    <div class="source-row">
+        <button type="button" class="source-btn" data-target="picker-files">📄<span>Files</span></button>
+        <button type="button" class="source-btn" data-target="picker-gallery">🖼️<span>Gallery</span></button>
+        <button type="button" id="camera-btn" class="source-btn">📷<span>Camera</span></button>
+    </div>
+    <button type="button" id="close-modal">Cancel</button>
+</div> -->
+
+<div class="sheet">
+    <h3>Select a source</h3>
+    <p>
+        <b>Already have a PDF?</b> Choose Files.<br><br>
+        <b>Have photos to print (e.g. notes)?</b> Choose Gallery or Camera — each photo becomes its own page automatically.<br><br>
+        <b>Want several photos combined on one page?</b> Create that collage yourself first (any photo app), then upload the single result via Gallery.
+    </p>
     <div class="source-row">
         <button type="button" class="source-btn" data-target="picker-files">📄<span>Files</span></button>
         <button type="button" class="source-btn" data-target="picker-gallery">🖼️<span>Gallery</span></button>
