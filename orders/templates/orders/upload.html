@@ -93,15 +93,15 @@
 
 <div id="source-modal">
     <div class="sheet">
-        <h3>Select a source</h3>
-        <p>PDF, or photos (combined into one PDF automatically).</p>
-        <div class="source-row">
-            <button type="button" class="source-btn" data-target="picker-files">📄<span>Files</span></button>
-            <button type="button" class="source-btn" data-target="picker-gallery">🖼️<span>Gallery</span></button>
-            <button type="button" id="camera-btn" class="source-btn">📷<span>Camera</span></button>
-        </div>
-        <button type="button" id="close-modal">Cancel</button>
+    <h3>Select a source</h3>
+    <p><b>Already have a PDF?</b> Choose Files.<br><b>Have photos of your notes?</b> Choose Gallery or Camera — they'll be combined into one PDF automatically.</p>
+    <div class="source-row">
+        <button type="button" class="source-btn" data-target="picker-files">📄<span>Files</span></button>
+        <button type="button" class="source-btn" data-target="picker-gallery">🖼️<span>Gallery</span></button>
+        <button type="button" id="camera-btn" class="source-btn">📷<span>Camera</span></button>
     </div>
+    <button type="button" id="close-modal">Cancel</button>
+</div>
 </div>
 
 <div id="camera-modal">
@@ -171,65 +171,24 @@ document.getElementById("finish-camera-btn").addEventListener("click", async () 
     finalizeFile(new File([pdfBlob], "camera-photos.pdf", { type: "application/pdf" }), `${cameraShots.length} photo(s) → PDF`);
 });
 
-// async function imagesToPdf(files) {
-//     const { jsPDF } = window.jspdf;
-//     const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
-//     const BANNER_SPACE = 30; // keep photo content clear of where the banner will print
-//     const usableHeight = A4_HEIGHT - BANNER_SPACE;
-//     let pdf = null;
-//     for (const file of files) {
-//         const dataUrl = await new Promise((resolve) => {
-//             const reader = new FileReader();
-//             reader.onload = () => resolve(reader.result);
-//             reader.readAsDataURL(file);
-//         });
-//         const img = await new Promise((resolve) => {
-//             const i = new Image();
-//             i.onload = () => resolve(i);
-//             i.src = dataUrl;
-//         });
-//         const imgRatio = img.width / img.height;
-//         const pageRatio = A4_WIDTH / usableHeight;
-//         let drawWidth, drawHeight;
-//         if (imgRatio > pageRatio) {
-//             drawWidth = A4_WIDTH;
-//             drawHeight = A4_WIDTH / imgRatio;
-//         } else {
-//             drawHeight = usableHeight;
-//             drawWidth = usableHeight * imgRatio;
-//         }
-//         const x = (A4_WIDTH - drawWidth) / 2;
-//         const y = BANNER_SPACE + (usableHeight - drawHeight) / 2;
-//         if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
-//         else pdf.addPage("a4", "p");
-//         pdf.addImage(dataUrl, "JPEG", x, y, drawWidth, drawHeight);
-//     }
-//     return pdf.output("blob");
-// }
-
 async function imagesToPdf(files) {
     const { jsPDF } = window.jspdf;
     const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
-    
-    // Massive safe zones to beat the printer grippers and browser zoom
-    const MARGIN = 40; 
-    const BANNER_SPACE = 40; 
-    
+
+    // Smaller, still-safe margins — enough to clear the printer's
+    // unprintable edge and the banner, without wasting page space.
+    const MARGIN = 12;
+    const BANNER_SPACE = 30;
+
     const usableWidth = A4_WIDTH - (MARGIN * 2);
     const usableHeight = A4_HEIGHT - BANNER_SPACE - MARGIN;
-    
+
     let pdf = null;
-    
     for (const file of files) {
-        // Use your existing loadCorrectedImage function to fix mobile rotation!
         const corrected = await loadCorrectedImage(file);
-        
         const imgRatio = corrected.width / corrected.height;
         const pageRatio = usableWidth / usableHeight;
-        
         let drawWidth, drawHeight;
-        
-        // Scale strictly against the usable safe zone, NOT the full A4 page
         if (imgRatio > pageRatio) {
             drawWidth = usableWidth;
             drawHeight = usableWidth / imgRatio;
@@ -237,17 +196,12 @@ async function imagesToPdf(files) {
             drawHeight = usableHeight;
             drawWidth = usableHeight * imgRatio;
         }
-        
-        // Center the image perfectly inside the safe margins
         const x = MARGIN + (usableWidth - drawWidth) / 2;
         const y = BANNER_SPACE + (usableHeight - drawHeight) / 2;
-        
         if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
         else pdf.addPage("a4", "p");
-        
         pdf.addImage(corrected.dataUrl, "JPEG", x, y, drawWidth, drawHeight);
     }
-    
     return pdf.output("blob");
 }
 
