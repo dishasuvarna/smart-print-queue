@@ -188,21 +188,30 @@ document.getElementById("finish-camera-btn").addEventListener("click", async () 
 
 async function imagesToPdf(files) {
     const { jsPDF } = window.jspdf;
-    const A4_WIDTH = 595.28, A4_HEIGHT = 841.89;
 
-    // Smaller, still-safe margins — enough to clear the printer's
-    // unprintable edge and the banner, without wasting page space.
-    const MARGIN = 12;
-    const BANNER_SPACE = 30;
+    // A4 in points, both orientations.
+    const PAGE_PORTRAIT = { w: 595.28, h: 841.89 };
+    const PAGE_LANDSCAPE = { w: 841.89, h: 595.28 };
 
-    const usableWidth = A4_WIDTH - (MARGIN * 2);
-    const usableHeight = A4_HEIGHT - BANNER_SPACE - MARGIN;
+    const MARGIN = 12;        // safe clearance from all four physical edges
+    const BANNER_SPACE = 30;  // extra clearance at the top, for the order/PIN strip
 
     let pdf = null;
+
     for (const file of files) {
         const corrected = await loadCorrectedImage(file);
         const imgRatio = corrected.width / corrected.height;
+
+        // Pick the page orientation that matches this specific photo —
+        // a wide photo gets a landscape page, a tall photo gets portrait.
+        const isLandscape = imgRatio > 1;
+        const page = isLandscape ? PAGE_LANDSCAPE : PAGE_PORTRAIT;
+        const orientation = isLandscape ? "l" : "p";
+
+        const usableWidth = page.w - MARGIN * 2;
+        const usableHeight = page.h - BANNER_SPACE - MARGIN;
         const pageRatio = usableWidth / usableHeight;
+
         let drawWidth, drawHeight;
         if (imgRatio > pageRatio) {
             drawWidth = usableWidth;
@@ -211,12 +220,18 @@ async function imagesToPdf(files) {
             drawHeight = usableHeight;
             drawWidth = usableHeight * imgRatio;
         }
+
         const x = MARGIN + (usableWidth - drawWidth) / 2;
         const y = BANNER_SPACE + (usableHeight - drawHeight) / 2;
-        if (!pdf) pdf = new jsPDF({ orientation: "p", unit: "pt", format: "a4" });
-        else pdf.addPage("a4", "p");
+
+        if (!pdf) {
+            pdf = new jsPDF({ orientation, unit: "pt", format: "a4" });
+        } else {
+            pdf.addPage("a4", orientation);
+        }
         pdf.addImage(corrected.dataUrl, "JPEG", x, y, drawWidth, drawHeight);
     }
+
     return pdf.output("blob");
 }
 
