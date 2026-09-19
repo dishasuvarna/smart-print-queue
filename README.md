@@ -1,4 +1,4 @@
-# CampusPrint
+# QueueDrop
 
 A campus print-shop ordering and fulfillment platform. Students upload their own documents or order pre-approved lecturer handouts, pay online, and collect a printed copy using a pickup PIN. Professors submit handouts directly; the shop verifies and activates them before students can order. The shop manages the entire fulfillment queue — printing, batching, and marking orders complete — from a single dashboard.
 

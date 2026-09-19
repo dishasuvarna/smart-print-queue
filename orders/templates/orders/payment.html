@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Payment — CampusPrint</title>
+<title>Payment — QueueDrop</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
   :root{--paper:#EFEDE6;--ink:#1A1A1A;--ribbon:#C8102E;--machine:#6B6B63;--ready:#2F6F4E;}
@@ -42,7 +42,7 @@
                 "key": "{{ razorpay_key_id }}",
                 "amount": "{{ amount }}",
                 "currency": "INR",
-                "name": "CampusPrint",
+                "name": "QueueDrop",
                 "description": "Order #{{ order.id }}",
                 "order_id": "{{ razorpay_order_id }}",
                 "handler": function (response) {
