@@ -80,6 +80,10 @@ def reconcile_pending_payments():
             logger.error("Reconciliation check failed for order %s: %s", order.id, exc)
             continue
 
+        if any(p["status"] == "captured" for p in payments["items"]):
+            logger.warning("Order %s was paid but no webhook arrived, reconciling now", order.id)
+            order.mark_paid()
+
         paid_entries = [p for p in payments["items"] if p["status"] == "captured"]
         if paid_entries:
             logger.warning(

@@ -1,4 +1,7 @@
 from django.db import models
+
+import secrets
+from django.db import transaction
 # from pypdf import PdfReader
 # from pypdf.errors import PdfReadError
 
@@ -99,6 +102,28 @@ class Order(models.Model):
 
     printed_at = models.DateTimeField(null=True, blank=True)
     print_token = models.CharField(max_length=32, blank=True)
+
+
+    @staticmethod
+    def _new_pin():
+        while True:
+            pin = str(secrets.randbelow(900000) + 100000)
+            if not Order.objects.filter(pickup_pin=pin, printed_at__isnull=True).exists():
+                return pin
+
+    def mark_paid(self):
+        """Safe to call from the webhook, the backup job and checkout verification."""
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(pk=self.pk)
+            if order.status == "PAID" and order.pickup_pin:
+                self.status, self.pickup_pin = order.status, order.pickup_pin
+                return False
+            order.status = "PAID"
+            if not order.pickup_pin:
+                order.pickup_pin = Order._new_pin()
+            order.save(update_fields=["status", "pickup_pin"])
+            self.status, self.pickup_pin = order.status, order.pickup_pin
+            return True
 
     def __str__(self):
         return f"Order #{self.id} — {self.status}"

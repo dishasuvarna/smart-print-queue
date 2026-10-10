@@ -13,6 +13,29 @@ from .models import Order, Handout, PricingSettings
 from .validators import validate_pdf_upload, UploadValidationError
 from .tasks import process_pdf
 
+import logging
+from django.shortcuts import get_object_or_404
+from django.views.decorators.http import require_POST
+
+logger = logging.getLogger("orders.payments")
+
+@require_POST
+def verify_payment(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+    params = {
+        "razorpay_order_id": request.POST.get("razorpay_order_id", ""),
+        "razorpay_payment_id": request.POST.get("razorpay_payment_id", ""),
+        "razorpay_signature": request.POST.get("razorpay_signature", ""),
+    }
+    if params["razorpay_order_id"] == order.razorpay_order_id:
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        try:
+            client.utility.verify_payment_signature(params)
+            order.mark_paid()
+        except razorpay.errors.SignatureVerificationError:
+            logger.warning("Checkout signature failed for order %s", order.id)
+    return redirect("order_placed", order_id=order.id)
+
 PRICE_PER_PAGE = 2  # ₹2 per page, adjust as needed
 
 def home(request):

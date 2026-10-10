@@ -34,7 +34,14 @@
         <button id="pay-btn">Pay ₹{{ order.total_price }}</button>
         <p class="note">If you see an error after paying, please wait a moment and check your order status before retrying — your payment may have still gone through.</p>
     </div>
+     
 
+    <form id="verify-form" method="post" action="{% url 'verify_payment' order.id %}" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="razorpay_payment_id" id="rzp_payment_id">
+    <input type="hidden" name="razorpay_order_id" id="rzp_order_id">
+    <input type="hidden" name="razorpay_signature" id="rzp_signature">
+</form>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
         document.getElementById("pay-btn").onclick = function () {
@@ -45,9 +52,16 @@
                 "name": "QueueDrop",
                 "description": "Order #{{ order.id }}",
                 "order_id": "{{ razorpay_order_id }}",
+                // "handler": function (response) {
+                //     window.location.href = "/order/{{ order.id }}/placed/";
+                // },
+
                 "handler": function (response) {
-                    window.location.href = "/order/{{ order.id }}/placed/";
-                },
+    document.getElementById("rzp_payment_id").value = response.razorpay_payment_id;
+    document.getElementById("rzp_order_id").value = response.razorpay_order_id;
+    document.getElementById("rzp_signature").value = response.razorpay_signature;
+    document.getElementById("verify-form").submit();
+},
                 "prefill": { "email": "{{ order.student_email }}" },
                 "theme": { "color": "#C8102E" }
             };

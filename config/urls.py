@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path
 
-from orders.views import pending_handout_count
+from orders.views import pending_handout_count, verify_payment
 from orders.views import mark_batch_printed
 
 from orders.views import print_order, print_batch
@@ -31,6 +31,7 @@ urlpatterns = [
     path("vendor/order/<int:order_id>/print/", print_order, name="print_order"),
     path("vendor/pending-count/", pending_handout_count, name="pending_handout_count"),
     path("health/", health_check, name="health_check"),
+    path("order/<int:order_id>/verify/", verify_payment, name="verify_payment"),
 ]
 
 from django.conf import settings
