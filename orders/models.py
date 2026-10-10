@@ -112,22 +112,22 @@ class PricingSettings(models.Model):
         verbose_name = "Pricing Settings"
         verbose_name_plural = "Pricing Settings"
 
-    # def save(self, *args, **kwargs):
-    #     self.pk = 1
-    #     super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
 
-def save(self, *args, **kwargs):
-    old_file = None
-    if self.pk:
-        old = Handout.objects.filter(pk=self.pk).first()
-        if old and old.file and old.file.name != self.file.name:
-            old_file = old.file
-    if self.page_count:
-        rate = PricingSettings.get_rates().handout_rate_per_page
-        self.price_per_copy = self.page_count * rate
-    super().save(*args, **kwargs)
-    if old_file:
-        old_file.delete(save=False)
+# def save(self, *args, **kwargs):
+#     old_file = None
+#     if self.pk:
+#         old = Handout.objects.filter(pk=self.pk).first()
+#         if old and old.file and old.file.name != self.file.name:
+#             old_file = old.file
+#     if self.page_count:
+#         rate = PricingSettings.get_rates().handout_rate_per_page
+#         self.price_per_copy = self.page_count * rate
+#     super().save(*args, **kwargs)
+#     if old_file:
+#         old_file.delete(save=False)
 
     @classmethod
     def get_rates(cls):

@@ -45,20 +45,20 @@ class HandoutAdmin(admin.ModelAdmin):
     #     return super().render_change_form(request, context, *args, **kwargs)
 
 
-@admin.action(description="Mark selected orders as printed")
-def mark_as_printed(modeladmin, request, queryset):
-    queryset.update(printed_at=timezone.now())
-
-
 # @admin.action(description="Mark selected orders as printed")
 # def mark_as_printed(modeladmin, request, queryset):
-#     from notifications.tasks import send_student_ready_notification
-#     for order in queryset.filter(printed_at__isnull=True):
-#         order.printed_at = timezone.now()
-#         if order.file and not order.handout:
-#             order.file.delete(save=False)
-#         order.save(update_fields=["printed_at", "file"])
-#         send_student_ready_notification.delay(order.id)
+#     queryset.update(printed_at=timezone.now())
+
+
+@admin.action(description="Mark selected orders as printed")
+def mark_as_printed(modeladmin, request, queryset):
+    from notifications.tasks import send_student_ready_notification
+    for order in queryset.filter(printed_at__isnull=True):
+        order.printed_at = timezone.now()
+        if order.file and not order.handout:
+            order.file.delete(save=False)
+        order.save(update_fields=["printed_at", "file"])
+        send_student_ready_notification.delay(order.id)
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
