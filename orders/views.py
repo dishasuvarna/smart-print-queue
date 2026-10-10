@@ -206,8 +206,7 @@ def mark_printed(request, order_id):
         # never be deleted here.
         if order.file and not order.handout:
             order.file.delete(save=False)
-
-        order.save(update_fields=["printed_at", "file"])
+            order.save(update_fields=["printed_at", "file"])
         from notifications.tasks import send_student_ready_notification
         send_student_ready_notification.delay(order.id)
     return redirect("vendor_dashboard")
