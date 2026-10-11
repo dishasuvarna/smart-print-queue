@@ -138,6 +138,10 @@ class PricingSettings(models.Model):
     color_rate_per_page = models.DecimalField(max_digits=6, decimal_places=2, default=10)
     handout_rate_per_page = models.DecimalField(max_digits=6, decimal_places=2, default=2)
 
+    max_orders_per_day = models.PositiveIntegerField(default=100, help_text="Set to 0 to close ordering.")
+        
+    file_size = models.PositiveBigIntegerField(default=0)
+
     class Meta:
         verbose_name = "Pricing Settings"
         verbose_name_plural = "Pricing Settings"
