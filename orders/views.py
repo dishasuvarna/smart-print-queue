@@ -17,7 +17,11 @@ import logging
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 
+from .capacity import OrdersClosed, orders_open, reserve_order
+
+MAX_COPIES = 50
 logger = logging.getLogger("orders.payments")
+
 
 @require_POST
 def verify_payment(request, order_id):
@@ -36,61 +40,187 @@ def verify_payment(request, order_id):
             logger.warning("Checkout signature failed for order %s", order.id)
     return redirect("order_placed", order_id=order.id)
 
-PRICE_PER_PAGE = 2  # ₹2 per page, adjust as needed
+# PRICE_PER_PAGE = 2  # ₹2 per page, adjust as needed
+
+
+
+
+
+def parse_copies(raw):
+    try:
+        copies = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return copies if 1 <= copies <= MAX_COPIES else None
+
+
+def _start_payment(order, total_price):
+    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+    rzp = client.order.create({
+        "amount": int(total_price * 100),
+        "currency": "INR",
+        "receipt": f"order_{order.id}",
+    })
+    order.razorpay_order_id = rzp["id"]
+    order.save(update_fields=["razorpay_order_id"])
+    return rzp
+
+
+def _payment_page(request, order, rzp):
+    return render(request, "orders/payment.html", {
+        "order": order,
+        "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+        "razorpay_order_id": rzp["id"],
+        "amount": int(order.total_price * 100),
+    })
+
+
+def _cancel(order):
+    order.status = "CANCELLED"
+    order.save(update_fields=["status"])
+
 
 def home(request):
-    return render(request, "orders/home.html")
+    return render(request, "orders/home.html", {"orders_open": orders_open()})
 
-def health_check(request):
-    return HttpResponse("OK")
 
 def upload_order(request):
-    if request.method == "POST":
-        uploaded_file = request.FILES.get("file")
-        student_email = request.POST.get("student_email")
-        copies = int(request.POST.get("copies", 1))
-        is_color = request.POST.get("is_color") == "true"
-        is_double_sided = request.POST.get("is_double_sided") == "true"
+    if request.method != "POST":
+        return render(request, "orders/upload.html", {"closed": not orders_open()})
 
-        try:
-            page_count = validate_pdf_upload(uploaded_file)
-        except UploadValidationError as e:
-            return render(request, "orders/upload.html", {"error": str(e)})
+    uploaded_file = request.FILES.get("file")
+    if uploaded_file is None:
+        return render(request, "orders/upload.html", {"error": "Please choose a file to upload."})
 
-        rates = PricingSettings.get_rates()
-        per_page_rate = rates.color_rate_per_page if is_color else rates.bw_rate_per_page
-        total_price = per_page_rate * page_count * copies
+    copies = parse_copies(request.POST.get("copies", 1))
+    if copies is None:
+        return render(request, "orders/upload.html", {"error": f"Copies must be between 1 and {MAX_COPIES}."})
 
-        order = Order.objects.create(
-            student_email=student_email,
-            file=uploaded_file,
+    try:
+        page_count = validate_pdf_upload(uploaded_file)
+    except UploadValidationError as e:
+        return render(request, "orders/upload.html", {"error": str(e)})
+
+    is_color = request.POST.get("is_color") == "true"
+    is_double_sided = request.POST.get("is_double_sided") == "true"
+    rates = PricingSettings.get_rates()
+    per_page_rate = rates.color_rate_per_page if is_color else rates.bw_rate_per_page
+    total_price = per_page_rate * page_count * copies
+
+    try:
+        order = reserve_order(
+            upload_size=uploaded_file.size,
+            student_email=request.POST.get("student_email"),
             page_count=page_count,
             copies=copies,
             is_color=is_color,
             is_double_sided=is_double_sided,
             total_price=total_price,
-            status="PENDING",
         )
+    except OrdersClosed:
+        return render(request, "orders/upload.html", {"closed": True})
 
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        razorpay_order = client.order.create({
-            "amount": int(total_price * 100),
-            "currency": "INR",
-            "receipt": f"order_{order.id}",
-        })
-        order.razorpay_order_id = razorpay_order["id"]
-        order.save(update_fields=["razorpay_order_id"])
+    try:
+        order.file = uploaded_file
+        order.save(update_fields=["file"])
+        rzp = _start_payment(order, total_price)
+    except Exception:
+        logger.exception("Could not start checkout for order %s", order.id)
+        _cancel(order)
+        return render(request, "orders/upload.html", {"error": "Something went wrong starting your payment. Please try again."})
 
+    try:
         process_pdf.delay(order.id)
+    except Exception:
+        logger.warning("Could not queue process_pdf for order %s", order.id)
 
-        return render(request, "orders/payment.html", {
-            "order": order,
-            "razorpay_key_id": settings.RAZORPAY_KEY_ID,
-            "razorpay_order_id": razorpay_order["id"],
-            "amount": int(total_price * 100),
-        })
+    return _payment_page(request, order, rzp)
 
-    return render(request, "orders/upload.html")
+
+def order_handout(request, handout_id):
+    handout = get_object_or_404(Handout, id=handout_id, is_active=True)
+
+    if request.method != "POST":
+        return render(request, "orders/order_handout.html", {"handout": handout, "closed": not orders_open()})
+
+    copies = parse_copies(request.POST.get("copies", 1))
+    if copies is None:
+        return render(request, "orders/order_handout.html", {"handout": handout, "error": f"Copies must be between 1 and {MAX_COPIES}."})
+
+    total_price = handout.price_per_copy * copies
+    try:
+        order = reserve_order(
+            handout=handout,
+            student_email=request.POST.get("student_email"),
+            page_count=handout.page_count,
+            copies=copies,
+            total_price=total_price,
+        )
+    except OrdersClosed:
+        return render(request, "orders/order_handout.html", {"handout": handout, "closed": True})
+
+    try:
+        rzp = _start_payment(order, total_price)
+    except Exception:
+        logger.exception("Could not start checkout for order %s", order.id)
+        _cancel(order)
+        return render(request, "orders/order_handout.html", {"handout": handout, "error": "Something went wrong starting your payment. Please try again."})
+
+    return _payment_page(request, order, rzp)
+
+# def home(request):
+#     return render(request, "orders/home.html")
+
+def health_check(request):
+    return HttpResponse("OK")
+
+# def upload_order(request):
+#     if request.method == "POST":
+#         uploaded_file = request.FILES.get("file")
+#         student_email = request.POST.get("student_email")
+#         copies = int(request.POST.get("copies", 1))
+#         is_color = request.POST.get("is_color") == "true"
+#         is_double_sided = request.POST.get("is_double_sided") == "true"
+
+#         try:
+#             page_count = validate_pdf_upload(uploaded_file)
+#         except UploadValidationError as e:
+#             return render(request, "orders/upload.html", {"error": str(e)})
+
+#         rates = PricingSettings.get_rates()
+#         per_page_rate = rates.color_rate_per_page if is_color else rates.bw_rate_per_page
+#         total_price = per_page_rate * page_count * copies
+
+#         order = Order.objects.create(
+#             student_email=student_email,
+#             file=uploaded_file,
+#             page_count=page_count,
+#             copies=copies,
+#             is_color=is_color,
+#             is_double_sided=is_double_sided,
+#             total_price=total_price,
+#             status="PENDING",
+#         )
+
+#         client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+#         razorpay_order = client.order.create({
+#             "amount": int(total_price * 100),
+#             "currency": "INR",
+#             "receipt": f"order_{order.id}",
+#         })
+#         order.razorpay_order_id = razorpay_order["id"]
+#         order.save(update_fields=["razorpay_order_id"])
+
+#         process_pdf.delay(order.id)
+
+#         return render(request, "orders/payment.html", {
+#             "order": order,
+#             "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+#             "razorpay_order_id": razorpay_order["id"],
+#             "amount": int(total_price * 100),
+#         })
+
+#     return render(request, "orders/upload.html")
 
 
 def order_placed(request, order_id):
@@ -115,40 +245,40 @@ def browse_handouts(request):
     })
 
 
-def order_handout(request, handout_id):
-    handout = Handout.objects.get(id=handout_id, is_active=True)
+# def order_handout(request, handout_id):
+#     handout = Handout.objects.get(id=handout_id, is_active=True)
 
-    if request.method == "POST":
-        student_email = request.POST.get("student_email")
-        copies = int(request.POST.get("copies", 1))
-        total_price = handout.price_per_copy * copies
+#     if request.method == "POST":
+#         student_email = request.POST.get("student_email")
+#         copies = int(request.POST.get("copies", 1))
+#         total_price = handout.price_per_copy * copies
 
-        order = Order.objects.create(
-            student_email=student_email,
-            handout=handout,
-            page_count=handout.page_count,
-            copies=copies,
-            total_price=total_price,
-            status="PENDING",
-        )
+#         order = Order.objects.create(
+#             student_email=student_email,
+#             handout=handout,
+#             page_count=handout.page_count,
+#             copies=copies,
+#             total_price=total_price,
+#             status="PENDING",
+#         )
 
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        razorpay_order = client.order.create({
-            "amount": int(total_price * 100),
-            "currency": "INR",
-            "receipt": f"order_{order.id}",
-        })
-        order.razorpay_order_id = razorpay_order["id"]
-        order.save(update_fields=["razorpay_order_id"])
+#         client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+#         razorpay_order = client.order.create({
+#             "amount": int(total_price * 100),
+#             "currency": "INR",
+#             "receipt": f"order_{order.id}",
+#         })
+#         order.razorpay_order_id = razorpay_order["id"]
+#         order.save(update_fields=["razorpay_order_id"])
 
-        return render(request, "orders/payment.html", {
-            "order": order,
-            "razorpay_key_id": settings.RAZORPAY_KEY_ID,
-            "razorpay_order_id": razorpay_order["id"],
-            "amount": int(total_price * 100),
-        })
+#         return render(request, "orders/payment.html", {
+#             "order": order,
+#             "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+#             "razorpay_order_id": razorpay_order["id"],
+#             "amount": int(total_price * 100),
+#         })
 
-    return render(request, "orders/order_handout.html", {"handout": handout})
+#     return render(request, "orders/order_handout.html", {"handout": handout})
 
 
 def is_authorized_vendor(user):

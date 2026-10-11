@@ -49,9 +49,11 @@
     <div class="wordmark">Queue<span>Drop</span></div>
     <h1>Upload your print job</h1>
     <p class="subtitle">Payment happens after upload.</p>
+    {% if closed %}<div class="error">We're at capacity right now. Please try again later today or tomorrow.</div>{% endif %}
+    <!-- {% if error %}<div class="error">{{ error }}</div>{% endif %} -->
+    
 
-    {% if error %}<div class="error">{{ error }}</div>{% endif %}
-
+    <fieldset {% if closed %}disabled{% endif %} style="border:0;padding:0;margin:0;min-width:0;">
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="field">
@@ -60,7 +62,9 @@
         </div>
         <div class="field">
             <label>PDF file</label>
-            <div id="upload-trigger">Tap to choose a file</div>
+            <!-- <div id="upload-trigger">Tap to choose a file</div> -->
+
+            <div id="upload-trigger" {% if closed %}style="pointer-events:none;opacity:.5;"{% endif %}>Tap to choose a file</div>
             <input type="file" name="file" id="file-input" accept="application/pdf,.pdf" required style="display:none;">
             <p class="hint">PDF only, max 50MB, up to 150 pages. Files are deleted after printing.</p>
             <p id="size-warning" class="warning"></p>
@@ -85,6 +89,8 @@
         </div>
         <button type="submit" id="submit-btn">Continue to payment</button>
     </form>
+
+    </fieldset>
 </div>
 
 <input type="file" id="picker-files" accept="application/pdf,.pdf" style="display:none;">

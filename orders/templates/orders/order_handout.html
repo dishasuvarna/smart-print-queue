@@ -23,7 +23,10 @@
     <div class="card">
         <h1>{{ handout.title }}</h1>
         <p class="meta">{{ handout.course_name }}{% if handout.lecturer_name %} · {{ handout.lecturer_name }}{% endif %} · ₹{{ handout.price_per_copy }}/copy</p>
+         
 
+        {% if error %}<p style="color:#C8102E;font-size:13px;">{{ error }}</p>{% endif %}
+        {% if closed %}<p style="color:#C8102E;font-size:13px;">We're at capacity right now. Please try again later today or tomorrow.</p>{% endif %}
         <form method="post">
             {% csrf_token %}
             <div class="field">
