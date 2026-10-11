@@ -62,6 +62,25 @@
     document.getElementById("rzp_signature").value = response.razorpay_signature;
     document.getElementById("verify-form").submit();
 },
+
+
+                "modal": {
+    "ondismiss": function () {
+        var token = document.querySelector("#verify-form [name=csrfmiddlewaretoken]").value;
+        fetch("{% url 'abandon_checkout' order.id %}", {
+            method: "POST",
+            headers: {"X-CSRFToken": token, "Content-Type": "application/x-www-form-urlencoded"},
+            body: "razorpay_order_id={{ razorpay_order_id }}"
+        }).then(function (r) { return r.json(); }).then(function (d) {
+            if (d.state === "released") {
+                document.getElementById("pay-btn").disabled = true;
+                document.querySelector(".note").textContent = "Checkout closed. Start a new order if you still want this print.";
+            } else {
+                window.location.href = "/order/{{ order.id }}/placed/";
+            }
+        });
+    }
+},
                 "prefill": { "email": "{{ order.student_email }}" },
                 "theme": { "color": "#C8102E" }
             };

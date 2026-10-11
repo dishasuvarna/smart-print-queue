@@ -30,12 +30,18 @@
         <div class="row"><span>Copies</span><span class="value">{{ order.copies }}</span></div>
         <div class="row"><span>Total</span><span class="value">₹{{ order.total_price }}</span></div>
         {% if order.printed_at %}
-            <div class="row"><span>Print status</span><span class="status-printed">Printed on {{ order.printed_at }}</span></div>
-        {% elif order.status == "PAID" %}
-            <div class="row"><span>Print status</span><span class="status-pending">Payment confirmed — printing in progress</span></div>
-        {% else %}
-            <div class="row"><span>Print status</span><span class="status-pending">Pending — awaiting payment confirmation</span></div>
-        {% endif %}
+    <div class="row"><span>Print status</span><span class="status-printed">Printed on {{ order.printed_at }}</span></div>
+{% elif order.status == "PAID" %}
+    <div class="row"><span>Print status</span><span class="status-pending">Payment confirmed — printing in progress</span></div>
+{% elif order.status == "REFUND_DUE" %}
+    <div class="row"><span>Payment</span><span class="status-pending">Refund in progress — the daily limit was reached while your payment was processing</span></div>
+{% elif order.status == "REFUNDED" %}
+    <div class="row"><span>Payment</span><span class="status-pending">Refunded — the daily limit was reached while your payment was processing</span></div>
+{% elif order.status == "CANCELLED" %}
+    <div class="row"><span>Payment</span><span class="status-pending">Checkout closed — if you paid, it will be confirmed or refunded automatically</span></div>
+{% else %}
+    <div class="row"><span>Print status</span><span class="status-pending">Pending — awaiting payment confirmation</span></div>
+{% endif %}
     </div>
 </body>
 </html>

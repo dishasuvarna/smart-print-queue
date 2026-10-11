@@ -39,61 +39,86 @@ def process_pdf(self, order_id):
     pdf_logger.info("Finished processing order %s", order_id)
 
 
-@shared_task
-def expire_stale_orders():
-    """
-    Celery Beat task, runs every 5 minutes. Marks unpaid orders older
-    than 15 minutes as EXPIRED, and decrements the cached Redis queue
-    counter so the "N orders ahead of you" number on the homepage
-    doesn't silently drift out of sync with reality.
-    """
-    cutoff = timezone.now() - timedelta(minutes=15)
-    stale_orders = Order.objects.filter(status="PENDING", created_at__lt=cutoff)
-    count = stale_orders.count()
-    if count:
-        logger.info("Expiring %d stale unpaid orders", count)
-    for order in stale_orders:
-        order.status = "EXPIRED"
-        order.save(update_fields=["status"])
-        # decrement_queue_cache(order.shop_id)  # your Redis cache update
+# @shared_task
+# def expire_stale_orders():
+#     """
+#     Celery Beat task, runs every 5 minutes. Marks unpaid orders older
+#     than 15 minutes as EXPIRED, and decrements the cached Redis queue
+#     counter so the "N orders ahead of you" number on the homepage
+#     doesn't silently drift out of sync with reality.
+#     """
+#     cutoff = timezone.now() - timedelta(minutes=15)
+#     stale_orders = Order.objects.filter(status="PENDING", created_at__lt=cutoff)
+#     count = stale_orders.count()
+#     if count:
+#         logger.info("Expiring %d stale unpaid orders", count)
+#     for order in stale_orders:
+#         order.status = "EXPIRED"
+#         order.save(update_fields=["status"])
+#         # decrement_queue_cache(order.shop_id)  # your Redis cache update
+
+
+# @shared_task
+# def reconcile_pending_payments():
+#     """
+#     Celery Beat task, runs every 10 minutes. Safety net for the case
+#     where Razorpay's webhook never arrives (network blip, a cold-starting
+#     Render instance at the wrong moment). Queries Razorpay directly for
+#     orders still PENDING despite the student likely having already paid.
+#     """
+#     import razorpay
+#     from django.conf import settings
+
+#     client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+#     cutoff = timezone.now() - timedelta(minutes=5)
+#     pending = Order.objects.filter(status="PENDING", created_at__lt=cutoff)
+
+#     for order in pending:
+#         try:
+#             payments = client.order.payments(order.razorpay_order_id)
+#         except Exception as exc:
+#             logger.error("Reconciliation check failed for order %s: %s", order.id, exc)
+#             continue
+
+#         if any(p["status"] == "captured" for p in payments["items"]):
+#             logger.warning("Order %s was paid but no webhook arrived, reconciling now", order.id)
+#             order.mark_paid()
+
+#         paid_entries = [p for p in payments["items"] if p["status"] == "captured"]
+#         if paid_entries:
+#             logger.warning(
+#                 "Order %s was paid but no webhook arrived — reconciling now", order.id
+#             )
+#             order.status = "PAID"
+#             order.save(update_fields=["status"])
+#             from notifications.tasks import send_shopkeeper_notification
+#             send_shopkeeper_notification.delay(order.id)
+
+
+
+RECOVERY_GRACE = timedelta(minutes=20)  # only decides when a stuck checkout is checked
 
 
 @shared_task
-def reconcile_pending_payments():
-    """
-    Celery Beat task, runs every 10 minutes. Safety net for the case
-    where Razorpay's webhook never arrives (network blip, a cold-starting
-    Render instance at the wrong moment). Queries Razorpay directly for
-    orders still PENDING despite the student likely having already paid.
-    """
-    import razorpay
-    from django.conf import settings
+def recover_stuck_checkouts():
+    """Confirm captured payments, free slots Razorpay shows as idle, retry refunds."""
+    from .payments import recover_checkout, retry_refund
 
-    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-    cutoff = timezone.now() - timedelta(minutes=5)
-    pending = Order.objects.filter(status="PENDING", created_at__lt=cutoff)
-
-    for order in pending:
+    cutoff = timezone.now() - RECOVERY_GRACE
+    stuck = Order.objects.filter(
+        status="PENDING", holds_slot=True, created_at__lt=cutoff
+    ).order_by("created_at")[:50]
+    for order in stuck:
         try:
-            payments = client.order.payments(order.razorpay_order_id)
-        except Exception as exc:
-            logger.error("Reconciliation check failed for order %s: %s", order.id, exc)
-            continue
+            logger.info("Checkout %s: %s", order.id, recover_checkout(order.id))
+        except Exception:
+            logger.exception("Recovery failed for order %s", order.id)
 
-        if any(p["status"] == "captured" for p in payments["items"]):
-            logger.warning("Order %s was paid but no webhook arrived, reconciling now", order.id)
-            order.mark_paid()
-
-        paid_entries = [p for p in payments["items"] if p["status"] == "captured"]
-        if paid_entries:
-            logger.warning(
-                "Order %s was paid but no webhook arrived — reconciling now", order.id
-            )
-            order.status = "PAID"
-            order.save(update_fields=["status"])
-            from notifications.tasks import send_shopkeeper_notification
-            send_shopkeeper_notification.delay(order.id)
-
+    for order in Order.objects.filter(status="REFUND_DUE")[:50]:
+        try:
+            retry_refund(order.id)
+        except Exception:
+            logger.exception("Refund retry failed for order %s", order.id)
 @shared_task
 def cleanup_expired_order_files():
     """
@@ -103,7 +128,7 @@ def cleanup_expired_order_files():
     Handout files, which are shared and long-lived by design.
     """
     stale_orders = Order.objects.filter(
-        status__in=["EXPIRED", "CANCELLED"],
+        status__in=["EXPIRED", "CANCELLED", "REFUND_DUE", "REFUNDED"],
         handout__isnull=True,
     ).exclude(file="")
     count = 0

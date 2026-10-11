@@ -76,6 +76,8 @@ class Order(models.Model):
         ("PAID", "Paid"),
         ("EXPIRED", "Expired"),
         ("CANCELLED", "Cancelled"),
+        ("REFUND_DUE", "Refund due"),
+        ("REFUNDED", "Refunded"),
     ]
     PROCESSING_CHOICES = [
         ("QUEUED", "Queued"),
@@ -109,6 +111,10 @@ class Order(models.Model):
     
     file_size = models.PositiveBigIntegerField(default=0)
 
+    holds_slot = models.BooleanField(default=False, db_default=False)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    razorpay_payment_id = models.CharField(max_length=100, blank=True, default="", db_default="")
+
     @staticmethod
     def _new_pin():
         while True:
@@ -116,19 +122,19 @@ class Order(models.Model):
             if not Order.objects.filter(pickup_pin=pin, printed_at__isnull=True).exists():
                 return pin
 
-    def mark_paid(self):
-        """Safe to call from the webhook, the backup job and checkout verification."""
-        with transaction.atomic():
-            order = Order.objects.select_for_update().get(pk=self.pk)
-            if order.status == "PAID" and order.pickup_pin:
-                self.status, self.pickup_pin = order.status, order.pickup_pin
-                return False
-            order.status = "PAID"
-            if not order.pickup_pin:
-                order.pickup_pin = Order._new_pin()
-            order.save(update_fields=["status", "pickup_pin"])
-            self.status, self.pickup_pin = order.status, order.pickup_pin
-            return True
+    # def mark_paid(self):
+    #     """Safe to call from the webhook, the backup job and checkout verification."""
+    #     with transaction.atomic():
+    #         order = Order.objects.select_for_update().get(pk=self.pk)
+    #         if order.status == "PAID" and order.pickup_pin:
+    #             self.status, self.pickup_pin = order.status, order.pickup_pin
+    #             return False
+    #         order.status = "PAID"
+    #         if not order.pickup_pin:
+    #             order.pickup_pin = Order._new_pin()
+    #         order.save(update_fields=["status", "pickup_pin"])
+    #         self.status, self.pickup_pin = order.status, order.pickup_pin
+    #         return True
 
     def __str__(self):
         return f"Order #{self.id} — {self.status}"

@@ -58,12 +58,8 @@ app.conf.update(
     # result_expires=3600,
 )
 app.conf.beat_schedule = {
-    "expire-stale-orders": {
-        "task": "orders.tasks.expire_stale_orders",
-        "schedule": 300.0,
-    },
-    "reconcile-pending-payments": {
-        "task": "orders.tasks.reconcile_pending_payments",
+    "recover-stuck-checkouts": {
+        "task": "orders.tasks.recover_stuck_checkouts",
         "schedule": 600.0,
     },
     "cleanup-expired-order-files": {
