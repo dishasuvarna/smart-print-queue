@@ -23,22 +23,26 @@ from django.http import JsonResponse
 from .capacity import OrdersClosed, closed_reason, release_hold, reserve_order
 from .payments import process_captured_payment, recover_checkout
 
-MAX_COPIES = 50
+import re
+import uuid
+from .permissions import is_shopkeeper
+
+
 logger = logging.getLogger("orders.payments")
 
 
 
 
 
-CLOSED_MESSAGES = {
-    "limit": "We've reached today's order limit. Please try again tomorrow.",
-    "holding": "The last few slots are held by students who are paying right now. Please try again in a few minutes.",
-    "storage": "We can't take new uploads right now. Please try again later today.",
-}
+# CLOSED_MESSAGES = {
+#     "limit": "We've reached today's order limit. Please try again tomorrow.",
+#     "holding": "The last few slots are held by students who are paying right now. Please try again in a few minutes.",
+#     "storage": "We can't take new uploads right now. Please try again later today.",
+# }
 
 
-def _closed_text(reason=None):
-    return CLOSED_MESSAGES.get(reason or closed_reason(), "")
+# def _closed_text(reason=None):
+#     return CLOSED_MESSAGES.get(reason or closed_reason(), "")
 
 
 def _cancel(order):
@@ -49,89 +53,89 @@ def home(request):
     return render(request, "orders/home.html", {"closed": _closed_text()})
 
 
-def upload_order(request):
-    if request.method != "POST":
-        return render(request, "orders/upload.html", {"closed": _closed_text()})
+# def upload_order(request):
+#     if request.method != "POST":
+#         return render(request, "orders/upload.html", {"closed": _closed_text()})
 
-    uploaded_file = request.FILES.get("file")
-    if uploaded_file is None:
-        return render(request, "orders/upload.html", {"error": "Please choose a file to upload."})
+#     uploaded_file = request.FILES.get("file")
+#     if uploaded_file is None:
+#         return render(request, "orders/upload.html", {"error": "Please choose a file to upload."})
 
-    copies = parse_copies(request.POST.get("copies", 1))
-    if copies is None:
-        return render(request, "orders/upload.html", {"error": f"Copies must be between 1 and {MAX_COPIES}."})
+#     copies = parse_copies(request.POST.get("copies", 1))
+#     if copies is None:
+#         return render(request, "orders/upload.html", {"error": f"Copies must be between 1 and {MAX_COPIES}."})
 
-    try:
-        page_count = validate_pdf_upload(uploaded_file)
-    except UploadValidationError as e:
-        return render(request, "orders/upload.html", {"error": str(e)})
+#     try:
+#         page_count = validate_pdf_upload(uploaded_file)
+#     except UploadValidationError as e:
+#         return render(request, "orders/upload.html", {"error": str(e)})
 
-    is_color = request.POST.get("is_color") == "true"
-    is_double_sided = request.POST.get("is_double_sided") == "true"
-    rates = PricingSettings.get_rates()
-    per_page_rate = rates.color_rate_per_page if is_color else rates.bw_rate_per_page
-    total_price = per_page_rate * page_count * copies
+#     is_color = request.POST.get("is_color") == "true"
+#     is_double_sided = request.POST.get("is_double_sided") == "true"
+#     rates = PricingSettings.get_rates()
+#     per_page_rate = rates.color_rate_per_page if is_color else rates.bw_rate_per_page
+#     total_price = per_page_rate * page_count * copies
 
-    try:
-        order = reserve_order(
-            upload_size=uploaded_file.size,
-            student_email=request.POST.get("student_email"),
-            page_count=page_count,
-            copies=copies,
-            is_color=is_color,
-            is_double_sided=is_double_sided,
-            total_price=total_price,
-        )
-    except OrdersClosed as exc:
-        return render(request, "orders/upload.html", {"closed": _closed_text(exc.reason)})
+#     try:
+#         order = reserve_order(
+#             upload_size=uploaded_file.size,
+#             student_email=request.POST.get("student_email"),
+#             page_count=page_count,
+#             copies=copies,
+#             is_color=is_color,
+#             is_double_sided=is_double_sided,
+#             total_price=total_price,
+#         )
+#     except OrdersClosed as exc:
+#         return render(request, "orders/upload.html", {"closed": _closed_text(exc.reason)})
 
-    try:
-        order.file = uploaded_file
-        order.save(update_fields=["file"])
-        rzp = _start_payment(order, total_price)
-    except Exception:
-        logger.exception("Could not start checkout for order %s", order.id)
-        _cancel(order)
-        return render(request, "orders/upload.html", {"error": "Something went wrong starting your payment. Please try again."})
+#     try:
+#         order.file = uploaded_file
+#         order.save(update_fields=["file"])
+#         rzp = _start_payment(order, total_price)
+#     except Exception:
+#         logger.exception("Could not start checkout for order %s", order.id)
+#         _cancel(order)
+#         return render(request, "orders/upload.html", {"error": "Something went wrong starting your payment. Please try again."})
 
-    try:
-        process_pdf.delay(order.id)
-    except Exception:
-        logger.warning("Could not queue process_pdf for order %s", order.id)
+#     try:
+#         process_pdf.delay(order.id)
+#     except Exception:
+#         logger.warning("Could not queue process_pdf for order %s", order.id)
 
-    return _payment_page(request, order, rzp)
+#     return _payment_page(request, order, rzp)
 
 
-def order_handout(request, handout_id):
-    handout = get_object_or_404(Handout, id=handout_id, is_active=True)
+# def order_handout(request, handout_id):
+#     handout = get_object_or_404(Handout, id=handout_id, is_active=True)
 
-    if request.method != "POST":
-        return render(request, "orders/order_handout.html", {"handout": handout, "closed": _closed_text()})
+#     if request.method != "POST":
+#         return render(request, "orders/order_handout.html", {"handout": handout, "closed": _closed_text()})
 
-    copies = parse_copies(request.POST.get("copies", 1))
-    if copies is None:
-        return render(request, "orders/order_handout.html", {"handout": handout, "error": f"Copies must be between 1 and {MAX_COPIES}."})
+#     copies = parse_copies(request.POST.get("copies", 1))
+#     if copies is None:
+#         return render(request, "orders/order_handout.html", {"handout": handout, "error": f"Copies must be between 1 and {MAX_COPIES}."})
 
-    total_price = handout.price_per_copy * copies
-    try:
-        order = reserve_order(
-            handout=handout,
-            student_email=request.POST.get("student_email"),
-            page_count=handout.page_count,
-            copies=copies,
-            total_price=total_price,
-        )
-    except OrdersClosed as exc:
-        return render(request, "orders/order_handout.html", {"handout": handout, "closed": _closed_text(exc.reason)})
+#     total_price = handout.price_per_copy * copies
+#     try:
+#         order = reserve_order(
+#             handout=handout,
+#             student_email=request.POST.get("student_email"),
+#             page_count=handout.page_count,
+#             copies=copies,
+#             total_price=total_price,
+#         )
+#     except OrdersClosed as exc:
+#         return render(request, "orders/order_handout.html", {"handout": handout, "closed": _closed_text(exc.reason)})
 
-    try:
-        rzp = _start_payment(order, total_price)
-    except Exception:
-        logger.exception("Could not start checkout for order %s", order.id)
-        _cancel(order)
-        return render(request, "orders/order_handout.html", {"handout": handout, "error": "Something went wrong starting your payment. Please try again."})
+#     try:
+#         rzp = _start_payment(order, total_price)
+#     except Exception:
+#         logger.exception("Could not start checkout for order %s", order.id)
+#         _cancel(order)
+#         return render(request, "orders/order_handout.html", {"handout": handout, "error": "Something went wrong starting your payment. Please try again."})
 
-    return _payment_page(request, order, rzp)
+#     return _payment_page(request, order, rzp)
 
 
 @require_POST
@@ -187,19 +191,172 @@ def abandon_checkout(request, order_id):
 #             logger.warning("Checkout signature failed for order %s", order.id)
 #     return redirect("order_placed", order_id=order.id)
 
-# PRICE_PER_PAGE = 2  # ₹2 per page, adjust as needed
 
 
 
 
 
-def parse_copies(raw):
+
+# def parse_copies(raw, max_copies):
+#     try:
+#         copies = int(raw)
+#     except (TypeError, ValueError):
+#         return None
+#     return copies if 1 <= copies <= max_copies else None
+
+
+TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
+
+CLOSED_MESSAGES = {
+    "limit": "We've reached today's order limit. Please try again tomorrow.",
+    "holding": "The last few slots are held by students who are paying right now. Please try again in a few minutes.",
+    "storage": "We can't take new uploads right now. Please try again later today.",
+    "setup": "Ordering isn't open yet. Please check back soon.",
+}
+
+
+def _closed_text(reason=None, for_upload=False):
+    return CLOSED_MESSAGES.get(reason or closed_reason(for_upload=for_upload), "")
+
+
+def _clean_token(raw):
+    return raw if raw and TOKEN_RE.match(raw) else ""
+
+
+def _form(request, template, ctx=None):
+    """Render a form with a fresh one-time token and the current copy limits."""
+    ctx = dict(ctx or {})
+    rates = PricingSettings.get_rates()
+    ctx.setdefault("token", uuid.uuid4().hex)
+    ctx.setdefault("max_copies_bw", rates.max_copies_bw)
+    ctx.setdefault("max_copies_color", rates.max_copies_color)
+    return render(request, template, ctx)
+
+
+def parse_copies(raw, max_copies):
     try:
         copies = int(raw)
     except (TypeError, ValueError):
         return None
-    return copies if 1 <= copies <= MAX_COPIES else None
+    return copies if 1 <= copies <= max_copies else None
 
+
+def _resume(request, order, template, ctx):
+    """A repeated submit lands on the order the first submit created."""
+    if order.status in ("PAID", "REFUND_DUE", "REFUNDED"):
+        return redirect("order_placed", order_id=order.id)
+    if order.status == "PENDING" and order.razorpay_order_id:
+        return _payment_page(request, order, {"id": order.razorpay_order_id})
+    ctx = dict(ctx, error="We're already processing this order. If the payment page doesn't open in a few seconds, go back and submit again.")
+    return _form(request, template, ctx)
+
+
+def upload_order(request):
+    if request.method != "POST":
+        return _form(request, "orders/upload.html", {"closed": _closed_text(for_upload=True)})
+
+    rates = PricingSettings.get_rates()
+    if rates.bw_rate_per_page is None or rates.color_rate_per_page is None:
+        return _form(request, "orders/upload.html", {"closed": CLOSED_MESSAGES["setup"]})
+
+    uploaded_file = request.FILES.get("file")
+    if uploaded_file is None:
+        return _form(request, "orders/upload.html", {"error": "Please choose a file to upload."})
+
+    is_color = request.POST.get("is_color") == "true"
+    is_double_sided = request.POST.get("is_double_sided") == "true"
+    max_copies = rates.max_copies_color if is_color else rates.max_copies_bw
+    copies = parse_copies(request.POST.get("copies", 1), max_copies)
+    if copies is None:
+        kind = "color" if is_color else "black & white"
+        return _form(request, "orders/upload.html", {"error": f"You can order 1 to {max_copies} copies for {kind} prints."})
+
+    try:
+        page_count = validate_pdf_upload(uploaded_file)
+    except UploadValidationError as e:
+        return _form(request, "orders/upload.html", {"error": str(e)})
+
+    per_page_rate = rates.color_rate_per_page if is_color else rates.bw_rate_per_page
+    total_price = per_page_rate * page_count * copies
+    if total_price < 1:
+        return _form(request, "orders/upload.html", {"error": "The minimum order is ₹1. Please add pages or copies."})
+
+    try:
+        order, created = reserve_order(
+            upload_size=uploaded_file.size,
+            token=_clean_token(request.POST.get("submission_token")),
+            student_email=request.POST.get("student_email"),
+            page_count=page_count,
+            copies=copies,
+            is_color=is_color,
+            is_double_sided=is_double_sided,
+            total_price=total_price,
+        )
+    except OrdersClosed as exc:
+        return _form(request, "orders/upload.html", {"closed": _closed_text(exc.reason)})
+
+    if not created:
+        return _resume(request, order, "orders/upload.html", {})
+
+    try:
+        order.file = uploaded_file
+        order.save(update_fields=["file"])
+        rzp = _start_payment(order, total_price)
+    except Exception:
+        logger.exception("Could not start checkout for order %s", order.id)
+        _cancel(order)
+        return _form(request, "orders/upload.html", {"error": "Something went wrong starting your payment. Please try again."})
+
+    try:
+        process_pdf.delay(order.id)
+    except Exception:
+        logger.warning("Could not queue process_pdf for order %s", order.id)
+
+    return _payment_page(request, order, rzp)
+
+
+def order_handout(request, handout_id):
+    handout = get_object_or_404(Handout, id=handout_id, is_active=True)
+    ctx = {"handout": handout}
+
+    if request.method != "POST":
+        return _form(request, "orders/order_handout.html", {**ctx, "closed": _closed_text()})
+
+    if handout.price_per_copy is None:
+        return _form(request, "orders/order_handout.html", {**ctx, "closed": CLOSED_MESSAGES["setup"]})
+
+    max_copies = PricingSettings.get_rates().max_copies_bw
+    copies = parse_copies(request.POST.get("copies", 1), max_copies)
+    if copies is None:
+        return _form(request, "orders/order_handout.html", {**ctx, "error": f"You can order 1 to {max_copies} copies."})
+
+    total_price = handout.price_per_copy * copies
+    if total_price < 1:
+        return _form(request, "orders/order_handout.html", {**ctx, "error": "The minimum order is ₹1. Please add copies."})
+
+    try:
+        order, created = reserve_order(
+            token=_clean_token(request.POST.get("submission_token")),
+            handout=handout,
+            student_email=request.POST.get("student_email"),
+            page_count=handout.page_count,
+            copies=copies,
+            total_price=total_price,
+        )
+    except OrdersClosed as exc:
+        return _form(request, "orders/order_handout.html", {**ctx, "closed": _closed_text(exc.reason)})
+
+    if not created:
+        return _resume(request, order, "orders/order_handout.html", ctx)
+
+    try:
+        rzp = _start_payment(order, total_price)
+    except Exception:
+        logger.exception("Could not start checkout for order %s", order.id)
+        _cancel(order)
+        return _form(request, "orders/order_handout.html", {**ctx, "error": "Something went wrong starting your payment. Please try again."})
+
+    return _payment_page(request, order, rzp)
 
 def _start_payment(order, total_price):
     client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
@@ -428,8 +585,11 @@ def browse_handouts(request):
 #     return render(request, "orders/order_handout.html", {"handout": handout})
 
 
-def is_authorized_vendor(user):
-    return user.is_superuser or user.username == "dishag"
+def is_shopkeeper(user):
+    return user.is_authenticated and (
+        user.is_superuser
+        or user.groups.filter(name="Shopkeeper").exists()
+    )
 
 
 # @login_required
@@ -460,7 +620,7 @@ def is_authorized_vendor(user):
 MAX_PAGES_PER_BATCH = 200
 
 @login_required
-@user_passes_test(is_authorized_vendor)
+@user_passes_test(is_shopkeeper)
 def vendor_dashboard(request):
     pending = Order.objects.filter(status="PAID", printed_at__isnull=True).order_by("created_at")
 
@@ -494,7 +654,7 @@ def vendor_dashboard(request):
 
 
 @login_required
-@user_passes_test(is_authorized_vendor)
+@user_passes_test(is_shopkeeper)
 def mark_printed(request, order_id):
     order = Order.objects.get(id=order_id)
     if not order.printed_at:
@@ -512,7 +672,7 @@ def mark_printed(request, order_id):
     return redirect("vendor_dashboard")
 
 @login_required
-@user_passes_test(is_authorized_vendor)
+@user_passes_test(is_shopkeeper)
 def mark_batch_printed(request):
     order_ids = request.POST.get("orders", "").split(",")
     orders = Order.objects.filter(id__in=order_ids, status="PAID", printed_at__isnull=True)
@@ -525,7 +685,7 @@ def mark_batch_printed(request):
 
 
 def pending_handout_count(request):
-    if not is_authorized_vendor(request.user):
+    if not is_shopkeeper(request.user):
         return HttpResponse(status=403)
     from .models import Handout
     count = Handout.objects.filter(is_active=False).count()
@@ -534,7 +694,7 @@ def pending_handout_count(request):
 from django.http import FileResponse
 
 @login_required
-@user_passes_test(is_authorized_vendor)
+@user_passes_test(is_shopkeeper)
 def print_order(request, order_id):
     from .pdf_utils import stamp_order_banner
     order = Order.objects.get(id=order_id)
@@ -546,7 +706,7 @@ def print_order(request, order_id):
 
 
 @login_required
-@user_passes_test(is_authorized_vendor)
+@user_passes_test(is_shopkeeper)
 def print_batch(request):
     from .pdf_utils import stamp_order_banner
     from pypdf import PdfWriter, PdfReader

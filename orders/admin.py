@@ -1,14 +1,12 @@
 from django.contrib import admin
 from django.utils import timezone
-from .models import Order, Handout, PricingSettings
+from django.utils.safestring import mark_safe
+
+from .models import Handout, Order, PricingSettings
+from .permissions import is_shopkeeper
 
 PROFESSOR_FIELDS = ["title", "course_name", "lecturer_name", "semester", "contact_number", "file"]
 
-
-def is_shopkeeper(user):
-    return user.is_superuser or user.username == "dishag"
-
-from django.utils.html import format_html
 
 @admin.register(Handout)
 class HandoutAdmin(admin.ModelAdmin):
@@ -32,38 +30,28 @@ class HandoutAdmin(admin.ModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
-        extra_context["title"] = format_html(
+        extra_context["title"] = mark_safe(
             'Select handout to change &nbsp; <a href="/vendor/" style="font-size:14px;">← Back to Vendor Dashboard</a>'
         )
         return super().changelist_view(request, extra_context=extra_context)
 
-    # def render_change_form(self, request, context, *args, **kwargs):
-    #     context["title"] = format_html(
-    #         '{} &nbsp; <a href="/vendor/" style="font-size:14px;">← Back to Vendor Dashboard</a>',
-    #         context["title"],
-    #     )
-    #     return super().render_change_form(request, context, *args, **kwargs)
-
 
 @admin.action(description="Mark selected orders as printed")
 def mark_as_printed(modeladmin, request, queryset):
-    queryset.update(printed_at=timezone.now())
+    from notifications.tasks import send_student_ready_notification
+    for order in queryset.filter(status="PAID", printed_at__isnull=True):
+        order.printed_at = timezone.now()
+        if order.file and not order.handout:
+            order.file.delete(save=False)
+        order.save(update_fields=["printed_at", "file"])
+        send_student_ready_notification.delay(order.id)
 
-
-# @admin.action(description="Mark selected orders as printed")
-# def mark_as_printed(modeladmin, request, queryset):
-#     from notifications.tasks import send_student_ready_notification
-#     for order in queryset.filter(printed_at__isnull=True):
-#         order.printed_at = timezone.now()
-#         if order.file and not order.handout:
-#             order.file.delete(save=False)
-#         order.save(update_fields=["printed_at", "file"])
-#         send_student_ready_notification.delay(order.id)
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ("id", "status", "printed_at", "created_at")
     actions = [mark_as_printed]
+
 
 @admin.register(PricingSettings)
 class PricingSettingsAdmin(admin.ModelAdmin):
@@ -77,8 +65,6 @@ class PricingSettingsAdmin(admin.ModelAdmin):
         return is_shopkeeper(request.user)
 
     def has_add_permission(self, request):
-        # Allow adding only if no row exists yet — enforces the singleton
-        # without permanently hiding the Add button.
         return is_shopkeeper(request.user) and not PricingSettings.objects.exists()
 
     def has_delete_permission(self, request, obj=None):

@@ -30,16 +30,25 @@
         {% if closed %}<p style="color:#C8102E;font-size:13px;">{{ closed }}</p>{% endif %}
         <form method="post">
             {% csrf_token %}
+            <input type="hidden" name="submission_token" value="{{ token }}">
             <div class="field">
                 <label>Email address</label>
                 <input type="email" name="student_email" required>
             </div>
-            <div class="field">
-                <label>Number of copies</label>
-                <input type="number" name="copies" value="1" min="1" required>
-            </div>
-            <button type="submit">Continue to payment</button>
+            <input type="number" name="copies" value="1" min="1" max="{{ max_copies_bw }}" required>
+            <p class="meta">Up to {{ max_copies_bw }} copies per order.</p>
+            <button type="submit" id="submit-btn">Continue to payment</button>
         </form>
     </div>
+    <script>
+const mainSubmit = document.getElementById("submit-btn");
+document.querySelector("form").addEventListener("submit", function () {
+    mainSubmit.disabled = true;
+    mainSubmit.textContent = "Please wait…";
+});
+window.addEventListener("pageshow", function (e) {
+    if (e.persisted) { mainSubmit.disabled = false; mainSubmit.textContent = "Continue to payment"; }
+});
+</script>
 </body>
 </html>

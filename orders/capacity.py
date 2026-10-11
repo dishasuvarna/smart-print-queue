@@ -48,23 +48,30 @@ def storage_in_use():
     return total or 0
 
 
-def closed_reason():
-    """None if students can order, otherwise "limit", "holding" or "storage"."""
-    limit = PricingSettings.get_rates().max_orders_per_day
+def closed_reason(for_upload=False):
+    """None if students can order, otherwise "setup", "limit", "holding" or "storage"."""
+    rates = PricingSettings.get_rates()
+    if for_upload and (rates.bw_rate_per_page is None or rates.color_rate_per_page is None):
+        return "setup"
     paid = paid_today()
-    if paid >= limit:
+    if paid >= rates.max_orders_per_day:
         return "limit"
-    if paid + active_holds() >= limit:
+    if paid + active_holds() >= rates.max_orders_per_day:
         return "holding"
     if storage_in_use() >= STORAGE_BUDGET_BYTES:
         return "storage"
     return None
 
 
-def reserve_order(upload_size=0, **fields):
-    """Check the limits and create the order, holding one slot, in one locked step."""
+def reserve_order(upload_size=0, token="", **fields):
+    """Check the limits and create the order in one locked step.
+    Returns (order, created). A repeated submit with the same token returns the first order."""
     with transaction.atomic():
         rates = lock_capacity()
+        if token:
+            existing = Order.objects.filter(submission_token=token).first()
+            if existing:
+                return existing, False
         paid = paid_today()
         if paid >= rates.max_orders_per_day:
             raise OrdersClosed("limit")
@@ -72,9 +79,11 @@ def reserve_order(upload_size=0, **fields):
             raise OrdersClosed("holding")
         if storage_in_use() + upload_size > STORAGE_BUDGET_BYTES:
             raise OrdersClosed("storage")
-        return Order.objects.create(
-            status="PENDING", holds_slot=True, file_size=upload_size, **fields
+        order = Order.objects.create(
+            status="PENDING", holds_slot=True, file_size=upload_size,
+            submission_token=token, **fields,
         )
+        return order, True
 
 
 def release_hold(order_id):
@@ -85,10 +94,9 @@ def release_hold(order_id):
         if order.status == "PENDING" and order.holds_slot:
             order.status = "CANCELLED"
             order.holds_slot = False
-            order.save(update_fields=["status", "holds_slot"])
+            order.submission_token = ""
+            order.save(update_fields=["status", "holds_slot", "submission_token"])
             return True
-        return False
-
 
 def orders_open():
     """Return whether new orders can currently be accepted."""

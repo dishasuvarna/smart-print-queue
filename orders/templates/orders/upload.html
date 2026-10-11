@@ -56,6 +56,7 @@
     <fieldset {% if closed %}disabled{% endif %} style="border:0;padding:0;margin:0;min-width:0;">
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
+        <input type="hidden" name="submission_token" value="{{ token }}">
         <div class="field">
             <label>Email address</label>
             <input type="email" name="student_email" placeholder="you@college.edu" required>
@@ -70,9 +71,10 @@
             <p id="size-warning" class="warning"></p>
         </div>
         <div class="field">
-            <label>Number of copies</label>
-            <input type="number" name="copies" value="1" min="1" required>
-        </div>
+    <label>Number of copies</label>
+    <input type="number" name="copies" id="copies-input" value="1" min="1" max="{{ max_copies_bw }}" required>
+    <p class="hint">Up to {{ max_copies_bw }} copies in black &amp; white, {{ max_copies_color }} in color.</p>
+</div>
         <div class="field">
             <label>Color mode</label>
             <select name="is_color">
@@ -136,6 +138,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 <script>
 const modal = document.getElementById("source-modal");
 const cameraModal = document.getElementById("camera-modal");
@@ -328,6 +331,31 @@ async function loadCorrectedImage(file) {
         height: canvas.height,
     };
 }
+
+// Keep the copies limit in step with the color choice (the server enforces it too).
+const copiesInput = document.getElementById("copies-input");
+const colorSelect = document.querySelector("select[name=is_color]");
+function syncMaxCopies() {
+    const max = colorSelect.value === "true" ? {{ max_copies_color }} : {{ max_copies_bw }};
+    copiesInput.max = max;
+    if (parseInt(copiesInput.value, 10) > max) copiesInput.value = max;
+}
+colorSelect.addEventListener("change", syncMaxCopies);
+syncMaxCopies();
+
+// Stop double-taps from submitting twice.
+const mainSubmit = document.getElementById("submit-btn");
+document.querySelector("form").addEventListener("submit", function () {
+    mainSubmit.disabled = true;
+    mainSubmit.textContent = "Please wait…";
+});
+window.addEventListener("pageshow", function (e) {
+    if (e.persisted) {
+        mainSubmit.disabled = false;
+        mainSubmit.textContent = "Continue to payment";
+    }
+});
 </script>
+
 </body>
 </html>
