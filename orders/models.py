@@ -39,9 +39,6 @@ class Handout(models.Model):
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    max_orders_per_day = models.PositiveIntegerField(default=100, help_text="Set to 0 to close ordering.")
-
-    file_size = models.PositiveBigIntegerField(default=0)
 
     def save(self, *args, **kwargs):
         # Price is always derived from page count — never manually entered by anyone.
@@ -107,6 +104,10 @@ class Order(models.Model):
     printed_at = models.DateTimeField(null=True, blank=True)
     print_token = models.CharField(max_length=32, blank=True)
 
+
+    max_orders_per_day = models.PositiveIntegerField(default=100, help_text="Set to 0 to close ordering.")
+    
+    file_size = models.PositiveBigIntegerField(default=0)
 
     @staticmethod
     def _new_pin():
