@@ -4,6 +4,7 @@ Retry policy is defined once per task and applies identically everywhere
 (points 4, 9).
 """
 
+from django.db.models import Q
 import logging
 from datetime import timedelta
 
@@ -101,8 +102,9 @@ RECOVERY_GRACE = timedelta(minutes=20)  # only decides when a stuck checkout is 
 
 @shared_task
 def recover_stuck_checkouts():
-    """Confirm captured payments, free slots Razorpay shows as idle, retry refunds."""
-    from .payments import recover_checkout, retry_refund
+    """Settle stuck checkouts, file paid uploads that aren't in storage yet, retry refunds."""
+    from .payments import recover_checkout, refund_lost_upload, retry_refund
+    from .staging import promote_upload
 
     cutoff = timezone.now() - RECOVERY_GRACE
     stuck = Order.objects.filter(
@@ -114,11 +116,54 @@ def recover_stuck_checkouts():
         except Exception:
             logger.exception("Recovery failed for order %s", order.id)
 
+    unfiled = (
+        Order.objects.filter(status="PAID", handout__isnull=True, printed_at__isnull=True)
+        .filter(Q(file="") | Q(file__isnull=True))[:50]
+    )
+    for order in unfiled:
+        try:
+            if promote_upload(order.id) == "lost":
+                refund_lost_upload(order.id)
+        except Exception:
+            logger.exception("Could not file upload for order %s", order.id)
+
     for order in Order.objects.filter(status="REFUND_DUE")[:50]:
         try:
             retry_refund(order.id)
         except Exception:
             logger.exception("Refund retry failed for order %s", order.id)
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_backoff_max=300, max_retries=5)
+def promote_upload_task(self, order_id):
+    from .payments import refund_lost_upload
+    from .staging import promote_upload
+    if promote_upload(order_id) == "lost":
+        refund_lost_upload(order_id)
+
+
+@shared_task
+def purge_staged_files():
+    """Delete temporary uploads whose order no longer needs them."""
+    import os
+    import time
+    from .staging import STAGING_DIR, discard_staged
+
+    if not os.path.isdir(STAGING_DIR):
+        return
+    for name in os.listdir(STAGING_DIR):
+        stem, ext = os.path.splitext(name)
+        if ext != ".pdf" or not stem.isdigit():
+            continue
+        order = Order.objects.filter(pk=int(stem)).first()
+        needed = order is not None and (
+            (order.status == "PENDING" and order.holds_slot)
+            or (order.status == "PAID" and not order.file and not order.printed_at)
+        )
+        too_old = time.time() - os.path.getmtime(os.path.join(STAGING_DIR, name)) > 24 * 3600
+        if not needed or too_old:
+            discard_staged(int(stem))
+            
 @shared_task
 def cleanup_expired_order_files():
     """

@@ -66,4 +66,8 @@ app.conf.beat_schedule = {
         "task": "orders.tasks.cleanup_expired_order_files",
         "schedule": 3600.0,
     },
+        "purge-staged-files": {
+        "task": "orders.tasks.purge_staged_files",
+        "schedule": 3600.0,
+    },
 }

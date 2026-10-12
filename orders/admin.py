@@ -50,6 +50,7 @@ def mark_as_printed(modeladmin, request, queryset):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ("id", "status", "printed_at", "created_at")
+    list_filter = ("status",)
     actions = [mark_as_printed]
 
 

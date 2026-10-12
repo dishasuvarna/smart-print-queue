@@ -6,8 +6,10 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from .models import Order, PricingSettings
+from .staging import discard_staged
 
-STORAGE_BUDGET_BYTES = 800 * 1024 * 1024  # leaves ~200 MB of the 1 GB for handouts
+STORAGE_BUDGET_BYTES = 800 * 1024 * 1024  # eventual Supabase use; leaves ~200 MB for handouts
+STAGING_BUDGET_BYTES = 300 * 1024 * 1024  # temporary local space for uploads awaiting payment
 
 
 class OrdersClosed(Exception):
@@ -17,7 +19,6 @@ class OrdersClosed(Exception):
 
 
 def lock_capacity():
-    """The one lock every capacity decision takes: the pricing settings row."""
     rates, _ = PricingSettings.objects.select_for_update().get_or_create(pk=1)
     return rates
 
@@ -40,9 +41,19 @@ def active_holds():
 
 
 def storage_in_use():
+    """Space student uploads will occupy in Supabase once their payments land."""
     total = (
         Order.objects.filter(handout__isnull=True, printed_at__isnull=True)
         .filter(Q(status="PAID") | Q(status="PENDING", holds_slot=True))
+        .aggregate(t=Sum("file_size"))["t"]
+    )
+    return total or 0
+
+
+def staged_bytes():
+    """Temporary local space used by uploads still waiting for payment."""
+    total = (
+        Order.objects.filter(status="PENDING", holds_slot=True, handout__isnull=True)
         .aggregate(t=Sum("file_size"))["t"]
     )
     return total or 0
@@ -58,7 +69,9 @@ def closed_reason(for_upload=False):
         return "limit"
     if paid + active_holds() >= rates.max_orders_per_day:
         return "holding"
-    if storage_in_use() >= STORAGE_BUDGET_BYTES:
+    if for_upload and (
+        storage_in_use() >= STORAGE_BUDGET_BYTES or staged_bytes() >= STAGING_BUDGET_BYTES
+    ):
         return "storage"
     return None
 
@@ -77,7 +90,10 @@ def reserve_order(upload_size=0, token="", **fields):
             raise OrdersClosed("limit")
         if paid + active_holds() >= rates.max_orders_per_day:
             raise OrdersClosed("holding")
-        if storage_in_use() + upload_size > STORAGE_BUDGET_BYTES:
+        if upload_size and (
+            storage_in_use() + upload_size > STORAGE_BUDGET_BYTES
+            or staged_bytes() + upload_size > STAGING_BUDGET_BYTES
+        ):
             raise OrdersClosed("storage")
         order = Order.objects.create(
             status="PENDING", holds_slot=True, file_size=upload_size,
@@ -87,7 +103,8 @@ def reserve_order(upload_size=0, token="", **fields):
 
 
 def release_hold(order_id):
-    """Free a checkout's slot. Returns False if it no longer held one."""
+    """Free a checkout's slot and delete its temporary file. False if it no longer held one."""
+    released = False
     with transaction.atomic():
         lock_capacity()
         order = Order.objects.select_for_update().get(pk=order_id)
@@ -96,7 +113,10 @@ def release_hold(order_id):
             order.holds_slot = False
             order.submission_token = ""
             order.save(update_fields=["status", "holds_slot", "submission_token"])
-            return True
+            released = True
+    if released:
+        discard_staged(order_id)
+    return released
 
 def orders_open():
     """Return whether new orders can currently be accepted."""

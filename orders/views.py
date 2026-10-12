@@ -250,7 +250,7 @@ def _resume(request, order, template, ctx):
     ctx = dict(ctx, error="We're already processing this order. If the payment page doesn't open in a few seconds, go back and submit again.")
     return _form(request, template, ctx)
 
-
+from .staging import stage_upload
 def upload_order(request):
     if request.method != "POST":
         return _form(request, "orders/upload.html", {"closed": _closed_text(for_upload=True)})
@@ -299,18 +299,12 @@ def upload_order(request):
         return _resume(request, order, "orders/upload.html", {})
 
     try:
-        order.file = uploaded_file
-        order.save(update_fields=["file"])
+        stage_upload(order.id, uploaded_file)  # temporary local copy only; nothing goes to Supabase yet
         rzp = _start_payment(order, total_price)
     except Exception:
         logger.exception("Could not start checkout for order %s", order.id)
         _cancel(order)
         return _form(request, "orders/upload.html", {"error": "Something went wrong starting your payment. Please try again."})
-
-    try:
-        process_pdf.delay(order.id)
-    except Exception:
-        logger.warning("Could not queue process_pdf for order %s", order.id)
 
     return _payment_page(request, order, rzp)
 
@@ -624,7 +618,7 @@ MAX_PAGES_PER_BATCH = 200
 def vendor_dashboard(request):
     pending = Order.objects.filter(status="PAID", printed_at__isnull=True).order_by("created_at")
 
-    upload_orders = pending.filter(handout__isnull=True)
+    upload_orders = pending.filter(handout__isnull=True).exclude(Q(file="") | Q(file__isnull=True))
 
     handout_orders = pending.filter(handout__isnull=False)
     handout_groups = {}
@@ -699,6 +693,8 @@ def print_order(request, order_id):
     from .pdf_utils import stamp_order_banner
     order = Order.objects.get(id=order_id)
     source = order.handout.file if order.handout else order.file
+    if not source:
+        return HttpResponse("This file is still being saved. Try again in a minute.", status=409)
     with source.open("rb") as f:
         file_bytes = f.read()
     stamped = stamp_order_banner(file_bytes, order.id, order.pickup_pin)
